@@ -1,0 +1,2308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json.schemastore.org/github-workflow.json",
+  "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions",
+  "additionalProperties": false,
+  "definitions": {
+    "architecture": {
+      "type": "string",
+      "enum": ["ARM32", "x64", "x86"]
+    },
+    "branch": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onpushpull_requestbranchestags",
+      "$ref": "#/definitions/globs",
+      "description": "عند استخدام حدثَي push و pull_request، يمكنك ضبط سير العمل ليعمل على فروع أو وسوم محددة. إذا عرّفت الوسوم فقط أو الفروع فقط، فلن يعمل سير العمل مع الأحداث التي تخص مرجع Git غير المُعرَّف.\nتقبل الكلمات المفتاحية branches و branches-ignore و tags و tags-ignore أنماط glob التي تستخدم حرفَي البدل * و ** لمطابقة أكثر من اسم فرع أو وسم. لمزيد من المعلومات، راجع https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet.\nتُقيَّم الأنماط المعرّفة في branches و tags مقابل اسم مرجع Git. على سبيل المثال، تعريف النمط mona/octocat في branches سيطابق مرجع Git ‏refs/heads/mona/octocat. والنمط releases/** سيطابق مرجع Git ‏refs/heads/releases/10.\nيمكنك استخدام نوعين من المرشّحات لمنع تشغيل سير العمل عند عمليات الدفع وطلبات السحب إلى الوسوم والفروع:\n- branches أو branches-ignore - لا يمكنك استخدام مرشّحَي branches و branches-ignore معًا لنفس الحدث في سير العمل. استخدم مرشّح branches عندما تحتاج إلى تصفية الفروع بمطابقات إيجابية مع استبعاد فروع. واستخدم مرشّح branches-ignore عندما تحتاج فقط إلى استبعاد أسماء فروع.\n- tags أو tags-ignore - لا يمكنك استخدام مرشّحَي tags و tags-ignore معًا لنفس الحدث في سير العمل. استخدم مرشّح tags عندما تحتاج إلى تصفية الوسوم بمطابقات إيجابية مع استبعاد وسوم. واستخدم مرشّح tags-ignore عندما تحتاج فقط إلى استبعاد أسماء وسوم.\nيمكنك استبعاد الوسوم والفروع باستخدام الحرف !. ترتيب تعريف الأنماط مهم.\n- النمط السلبي المطابق (المسبوق بـ !) بعد مطابقة إيجابية سيستبعد مرجع Git.\n- النمط الإيجابي المطابق بعد مطابقة سلبية سيُعيد تضمين مرجع Git."
+    },
+    "cacheMode": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#cache-mode",
+      "description": "يتحكم في مستوى الوصول إلى ذاكرة التخزين المؤقت (cache) في GitHub Actions الممنوح لسير العمل أو للمهمة.",
+      "type": "string",
+      "enum": ["read", "write", "write-only", "none"]
+    },
+    "concurrency": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run-1",
+          "description": "عند وضع مهمة أو سير عمل متزامن في قائمة الانتظار، إذا كانت هناك مهمة أو سير عمل آخر يستخدم نفس مجموعة التزامن في المستودع قيد التشغيل، فستبقى المهمة أو سير العمل المنتظر في حالة انتظار (pending). افتراضيًا يُلغى أي سير عمل أو مهمة كانت في حالة انتظار سابقًا ضمن مجموعة التزامن؛ ويمكن تغيير هذا السلوك باستخدام `queue`.",
+          "type": "string"
+        },
+        "cancel-in-progress": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run-1",
+          "description": "لإلغاء أي مهمة أو سير عمل قيد التشغيل حاليًا ضمن نفس مجموعة التزامن، حدّد cancel-in-progress: true.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "queue": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#example-queueing-multiple-pending-runs",
+          "description": "يتحكم في كيفية ترتيب المهام أو تشغيلات سير العمل المنتظرة في قائمة الانتظار ضمن مجموعة التزامن. مع القيمة الافتراضية `single` يمكن أن يكون هناك تشغيل منتظر واحد على الأكثر — وأي تشغيلات منتظرة إضافية تُلغي التشغيل السابق. ومع `max` يمكن أن يصل عدد التشغيلات المنتظرة إلى 100 وتُعالَج بترتيب FIFO (الأول دخولًا أول خروجًا). لا يُسمح بالجمع بين `queue: max` و `cancel-in-progress: true`.",
+          "type": "string",
+          "enum": ["single", "max"],
+          "default": "single"
+        }
+      },
+      "required": ["group"],
+      "additionalProperties": false
+    },
+    "configuration": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/configuration"
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/configuration"
+          }
+        }
+      ]
+    },
+    "jobContainer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerimage",
+          "description": "صورة Docker المستخدمة كحاوية لتشغيل الإجراء. يمكن أن تكون القيمة اسم صورة على Docker Hub أو اسم سجل (registry).",
+          "type": "string"
+        },
+        "credentials": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainercredentials",
+          "description": "إذا كان سجل الحاويات الخاص بالصورة يتطلب مصادقة لسحب الصورة، يمكنك استخدام credentials لتعيين خريطة باسم المستخدم وكلمة المرور. بيانات الاعتماد هي نفس القيم التي ستقدّمها لأمر `docker login`.",
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "env": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerenv",
+          "$ref": "#/definitions/env",
+          "description": "يعيّن خريطة لمتغيرات البيئة داخل الحاوية."
+        },
+        "ports": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerports",
+          "description": "يعيّن مصفوفة بالمنافذ (ports) التي سيتم كشفها على الحاوية.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "volumes": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainervolumes",
+          "description": "يعيّن مصفوفة بوحدات التخزين (volumes) التي ستستخدمها الحاوية. يمكنك استخدام وحدات التخزين لمشاركة البيانات بين الخدمات أو الخطوات الأخرى في المهمة. يمكنك تحديد وحدات تخزين Docker مسمّاة، أو وحدات تخزين Docker مجهولة، أو عمليات ربط (bind mounts) على المضيف.\nلتحديد وحدة تخزين، حدّد المسار المصدر ومسار الوجهة: <source>:<destinationPath>\n‏<source> هو اسم وحدة تخزين أو مسار مطلق على الجهاز المضيف، و <destinationPath> هو مسار مطلق داخل الحاوية.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "options": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontaineroptions",
+          "description": "خيارات إضافية لموارد حاوية Docker. للاطلاع على قائمة الخيارات، راجع https://docs.docker.com/engine/reference/commandline/create/#options.",
+          "type": "string"
+        }
+      },
+      "required": ["image"],
+      "additionalProperties": false
+    },
+    "serviceContainer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idimage",
+          "description": "صورة Docker المستخدمة كحاوية خدمة لتشغيل الإجراء. يمكن أن تكون القيمة اسم صورة على Docker Hub أو اسم سجل (registry).",
+          "type": "string"
+        },
+        "credentials": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idcredentials",
+          "description": "إذا كان سجل الحاويات الخاص بالصورة يتطلب مصادقة لسحب الصورة، يمكنك استخدام credentials لتعيين خريطة باسم المستخدم وكلمة المرور. بيانات الاعتماد هي نفس القيم التي ستقدّمها لأمر `docker login`.",
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "env": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idenv",
+          "$ref": "#/definitions/env",
+          "description": "يعيّن خريطة لمتغيرات البيئة داخل حاوية الخدمة."
+        },
+        "ports": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idports",
+          "description": "يعيّن مصفوفة بالمنافذ (ports) التي سيتم كشفها على حاوية الخدمة.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "volumes": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idvolumes",
+          "description": "يعيّن مصفوفة بوحدات التخزين (volumes) التي ستستخدمها حاوية الخدمة. يمكنك استخدام وحدات التخزين لمشاركة البيانات بين الخدمات أو الخطوات الأخرى في المهمة. يمكنك تحديد وحدات تخزين Docker مسمّاة، أو وحدات تخزين Docker مجهولة، أو عمليات ربط (bind mounts) على المضيف.\nلتحديد وحدة تخزين، حدّد المسار المصدر ومسار الوجهة: <source>:<destinationPath>\n‏<source> هو اسم وحدة تخزين أو مسار مطلق على الجهاز المضيف، و <destinationPath> هو مسار مطلق داخل الحاوية.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "options": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idoptions",
+          "description": "خيارات إضافية لموارد حاوية Docker. للاطلاع على قائمة الخيارات، راجع https://docs.docker.com/engine/reference/commandline/create/#options.",
+          "type": "string"
+        },
+        "command": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idcommand",
+          "description": "يتجاوز الأمر الافتراضي لصورة Docker ‏(`CMD`). تُمرَّر القيمة كوسائط بعد اسم الصورة في أمر `docker create`. إذا حدّدت `entrypoint` أيضًا، فإن `command` يوفّر الوسائط لنقطة الدخول تلك.",
+          "type": "string"
+        },
+        "entrypoint": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_identrypoint",
+          "description": "يتجاوز `ENTRYPOINT` الافتراضي لصورة Docker. القيمة سلسلة نصية واحدة تحدد الملف التنفيذي الذي سيتم تشغيله. استخدمه عندما تحتاج إلى استبدال نقطة دخول الصورة بالكامل. يمكنك الجمع بين `entrypoint` و `command` لتمرير وسائط إلى نقطة الدخول المخصصة.",
+          "type": "string"
+        }
+      },
+      "required": ["image"],
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "object",
+          "properties": {
+            "shell": {
+              "$ref": "#/definitions/shell"
+            },
+            "working-directory": {
+              "$ref": "#/definitions/working-directory"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "permissions": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions",
+      "description": "يمكنك تعديل الصلاحيات الافتراضية الممنوحة لـ GITHUB_TOKEN بإضافة صلاحيات أو إزالتها حسب الحاجة، بحيث لا تسمح إلا بالحد الأدنى المطلوب من الوصول.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["read-all", "write-all"]
+        },
+        {
+          "$ref": "#/definitions/permissions-event"
+        }
+      ]
+    },
+    "permissions-event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "artifact-metadata": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "attestations": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "checks": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "code-quality": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "contents": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "deployments": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "discussions": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "id-token": {
+          "type": "string",
+          "enum": ["write", "none"]
+        },
+        "issues": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "models": {
+          "type": "string",
+          "enum": ["read", "none"]
+        },
+        "packages": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "pages": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "pull-requests": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "repository-projects": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "security-events": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "statuses": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "vulnerability-alerts": {
+          "type": "string",
+          "enum": ["read", "none"]
+        },
+        "copilot-requests": {
+          "type": "string",
+          "enum": ["write"]
+        }
+      }
+    },
+    "permissions-level": {
+      "type": "string",
+      "enum": ["read", "write", "none"]
+    },
+    "env": {
+      "$comment": "https://docs.github.com/en/actions/learn-github-actions/environment-variables",
+      "description": "لتعيين متغيرات بيئة مخصصة، يجب أن تحدد المتغيرات في ملف سير العمل. يمكنك تعريف متغيرات البيئة لخطوة أو مهمة أو لسير العمل بالكامل باستخدام الكلمات المفتاحية jobs.<job_id>.steps[*].env و jobs.<job_id>.env و env. لمزيد من المعلومات، راجع https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsenv",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "$ref": "#/definitions/stringContainingExpressionSyntax"
+        }
+      ]
+    },
+    "environment": {
+      "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idenvironment",
+      "description": "البيئة التي تشير إليها المهمة",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#example-using-a-single-environment-name",
+          "description": "اسم البيئة المُعدّة في المستودع.",
+          "type": "string"
+        },
+        "url": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#example-using-environment-name-and-url",
+          "description": "رابط (URL) النشر",
+          "type": "string"
+        },
+        "deployment": {
+          "$comment": "https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments#using-environments-without-deployments",
+          "description": "ما إذا كان سيتم إنشاء عملية نشر (deployment) لهذه المهمة. تعيينه إلى false يسمح للمهمة باستخدام أسرار ومتغيرات البيئة دون إنشاء سجل نشر. تظل مؤقتات الانتظار والمراجِعون المطلوبون سارية.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": true
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "event": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows",
+      "type": "string",
+      "enum": [
+        "branch_protection_rule",
+        "check_run",
+        "check_suite",
+        "create",
+        "delete",
+        "deployment",
+        "deployment_status",
+        "discussion",
+        "discussion_comment",
+        "fork",
+        "gollum",
+        "issue_comment",
+        "issues",
+        "label",
+        "merge_group",
+        "milestone",
+        "page_build",
+        "project",
+        "project_card",
+        "project_column",
+        "public",
+        "pull_request",
+        "pull_request_review",
+        "pull_request_review_comment",
+        "pull_request_target",
+        "push",
+        "registry_package",
+        "release",
+        "status",
+        "watch",
+        "workflow_call",
+        "workflow_dispatch",
+        "workflow_run",
+        "repository_dispatch"
+      ]
+    },
+    "eventObject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expressionSyntax": {
+      "$comment": "escape `{` and `}` in pattern to be unicode compatible (#1360)",
+      "type": "string",
+      "pattern": "^\\$\\{\\{(.|[\r\n])*\\}\\}$"
+    },
+    "stringContainingExpressionSyntax": {
+      "$comment": "escape `{` and `}` in pattern to be unicode compatible (#1360)",
+      "type": "string",
+      "pattern": "^.*\\$\\{\\{(.|[\r\n])*\\}\\}.*$"
+    },
+    "globs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "machine": {
+      "type": "string",
+      "enum": ["linux", "macos", "windows"]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[_a-zA-Z][a-zA-Z0-9_-]*$"
+    },
+    "path": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onpushpull_requestpaths",
+      "$ref": "#/definitions/globs",
+      "description": "عند استخدام حدثَي push و pull_request، يمكنك ضبط سير العمل ليعمل عندما لا يطابق ملف واحد على الأقل paths-ignore، أو عندما يطابق ملف مُعدَّل واحد على الأقل المسارات المُعدّة. لا تُقيَّم مرشّحات المسارات عند الدفع إلى الوسوم.\nتقبل الكلمتان المفتاحيتان paths-ignore و paths أنماط glob التي تستخدم حرفَي البدل * و ** لمطابقة أكثر من اسم مسار. لمزيد من المعلومات، راجع https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet.\nيمكنك استبعاد المسارات باستخدام نوعين من المرشّحات. لا يمكنك استخدام هذين المرشّحين معًا لنفس الحدث في سير العمل.\n- paths-ignore - استخدم مرشّح paths-ignore عندما تحتاج فقط إلى استبعاد أسماء مسارات.\n- paths - استخدم مرشّح paths عندما تحتاج إلى تصفية المسارات بمطابقات إيجابية مع استبعاد مسارات."
+    },
+    "shell": {
+      "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell",
+      "description": "يمكنك تجاوز إعدادات الصدفة (shell) الافتراضية في نظام تشغيل المُشغّل (runner) باستخدام الكلمة المفتاحية shell. يمكنك استخدام كلمات الصدفة المفتاحية المدمجة، أو تعريف مجموعة مخصصة من خيارات الصدفة.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#custom-shell",
+          "type": "string",
+          "enum": ["bash", "pwsh", "python", "sh", "cmd", "powershell"]
+        }
+      ]
+    },
+    "snapshot": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot",
+      "description": "يمكنك استخدام `jobs.<job_id>.snapshot` لإنشاء صورة مخصصة.\nأضف الكلمة المفتاحية snapshot إلى المهمة، باستخدام صيغة السلسلة النصية أو صيغة الخريطة كما هو موضح في https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#generating-a-custom-image.\nكل مهمة تتضمن الكلمة المفتاحية snapshot تُنشئ صورة منفصلة. لإنشاء صورة واحدة فقط أو إصدار صورة واحد، ضع كل خطوات سير العمل في مهمة واحدة. كل تشغيل ناجح لمهمة تتضمن الكلمة المفتاحية snapshot يُنشئ إصدارًا جديدًا من تلك الصورة.\nلمزيد من المعلومات، راجع https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images.",
+      "oneOf": [
+        {
+          "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#string-syntax",
+          "type": "string",
+          "description": "يمكنك استخدام صيغة السلسلة النصية مع `snapshot` لتعريف اسم الصورة. تُنشئ هذه الطريقة صورة جديدة أو تضيف إصدارًا جديدًا إلى صورة موجودة بنفس الاسم. لا يمكنك تحديد رقم إصدار باستخدام هذه الصيغة."
+        },
+        {
+          "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#mapping-syntax",
+          "type": "object",
+          "additionalProperties": false,
+          "description": "يمكنك استخدام صيغة الخريطة مع `snapshot` لتعريف كلٍّ من `image-name` و `version` الاختياري. عند تحديد إصدار رئيسي (major)، يزداد الإصدار الفرعي (minor) تلقائيًا إذا كان ذلك الإصدار الرئيسي موجودًا بالفعل. إصدارات التصحيح (patch) غير مدعومة.",
+          "properties": {
+            "image-name": {
+              "type": "string"
+            },
+            "version": {
+              "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#specifying-a-version-in-your-workflow",
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+|\\*)?$"
+            }
+          },
+          "required": ["image-name"]
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependencies": {
+        "working-directory": ["run"],
+        "shell": ["run"]
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "uses": true
+          },
+          "required": ["uses"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": true
+          },
+          "required": ["run"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "wait": true
+          },
+          "required": ["wait"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "wait-all": true
+          },
+          "required": ["wait-all"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cancel": true
+          },
+          "required": ["cancel"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "parallel": true
+          },
+          "required": ["parallel"]
+        }
+      ],
+      "properties": {
+        "id": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsid",
+          "description": "معرّف فريد للخطوة. يمكنك استخدام المعرّف (id) للإشارة إلى الخطوة داخل السياقات (contexts). لمزيد من المعلومات، راجع https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.",
+          "type": "string"
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsif",
+          "description": "يمكنك استخدام الشرط if لمنع تشغيل الخطوة ما لم يتحقق شرط معيّن. يمكنك استخدام أي سياق وتعبير مدعومين لإنشاء الشرط.\nالتعبيرات داخل شرط if لا تتطلب صيغة ${{ }}. لمزيد من المعلومات، راجع https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsname",
+          "description": "اسم لخطوتك يُعرض على GitHub.",
+          "type": "string"
+        },
+        "uses": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses",
+          "description": "يختار إجراءً (action) ليُشغَّل كجزء من خطوة في مهمتك. الإجراء وحدة شيفرة قابلة لإعادة الاستخدام. يمكنك استخدام إجراء معرّف في نفس مستودع سير العمل، أو في مستودع عام، أو في صورة حاوية Docker منشورة (https://hub.docker.com/).\nنوصي بشدة بتضمين إصدار الإجراء الذي تستخدمه بتحديد مرجع Git أو SHA أو رقم وسم Docker. إذا لم تحدد إصدارًا، فقد يتعطل سير عملك أو يتصرف بشكل غير متوقع عندما ينشر مالك الإجراء تحديثًا.\n- استخدام SHA الخاص بالـ commit لإصدار منشور من الإجراء هو الأكثر أمانًا من حيث الاستقرار والأمان.\n- استخدام إصدار رئيسي محدد من الإجراء يتيح لك تلقي الإصلاحات الحرجة والتحديثات الأمنية مع الحفاظ على التوافق، ويضمن أيضًا استمرار عمل سير عملك.\n- استخدام الفرع master للإجراء قد يكون مريحًا، لكن إذا أصدر أحدهم إصدارًا رئيسيًا جديدًا يحتوي على تغيير كاسر، فقد يتعطل سير عملك.\nبعض الإجراءات تتطلب مُدخلات يجب تعيينها باستخدام الكلمة المفتاحية with. راجع ملف README الخاص بالإجراء لمعرفة المُدخلات المطلوبة.\nالإجراءات إما ملفات JavaScript أو حاويات Docker. إذا كان الإجراء الذي تستخدمه حاوية Docker فيجب تشغيل المهمة في بيئة Linux افتراضية. لمزيد من التفاصيل، راجع https://help.github.com/en/articles/virtual-environments-for-github-actions.",
+          "type": "string"
+        },
+        "run": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsrun",
+          "description": "يشغّل برامج سطر الأوامر باستخدام صدفة (shell) نظام التشغيل. إذا لم تقدّم اسمًا، فسيكون اسم الخطوة افتراضيًا هو النص المحدد في أمر run.\nتعمل الأوامر افتراضيًا باستخدام صدفات غير تسجيل دخول (non-login). يمكنك اختيار صدفة مختلفة وتخصيص الصدفة المستخدمة لتشغيل الأوامر. لمزيد من المعلومات، راجع https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell.\nكل كلمة مفتاحية run تمثّل عملية (process) وصدفة جديدتين في البيئة الافتراضية. عند تقديم أوامر متعددة الأسطر، يُنفَّذ كل سطر في نفس الصدفة.",
+          "type": "string"
+        },
+        "working-directory": {
+          "$ref": "#/definitions/working-directory"
+        },
+        "shell": {
+          "$ref": "#/definitions/shell"
+        },
+        "with": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswith",
+          "$ref": "#/definitions/env",
+          "description": "خريطة لمعاملات الإدخال التي يعرّفها الإجراء. كل معامل إدخال هو زوج مفتاح/قيمة. تُعيَّن معاملات الإدخال كمتغيرات بيئة، ويُضاف إلى اسم المتغير البادئة INPUT_ ويُحوَّل إلى أحرف كبيرة.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/env"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs",
+                  "type": "string"
+                },
+                "entrypoint": {
+                  "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint",
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "env": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsenv",
+          "$ref": "#/definitions/env",
+          "description": "يعيّن متغيرات بيئة لتستخدمها الخطوات في البيئة الافتراضية. يمكنك أيضًا تعيين متغيرات بيئة لسير العمل بالكامل أو لمهمة."
+        },
+        "continue-on-error": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error",
+          "description": "يمنع فشل المهمة عند فشل خطوة. عيّنه إلى true للسماح بنجاح المهمة عند فشل هذه الخطوة.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": false
+        },
+        "timeout-minutes": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes",
+          "description": "الحد الأقصى لعدد الدقائق لتشغيل الخطوة قبل إنهاء العملية.",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "background": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsbackground",
+          "description": "يشغّل خطوة بشكل غير متزامن بحيث تنتقل المهمة إلى الخطوة التالية دون انتظار انتهائها. يمكنك استخدام background مع الخطوات التي تستخدم run أو uses. للإشارة إلى خطوة خلفية من wait أو cancel، امنحها معرّفًا (id). يمكن تشغيل 10 خطوات خلفية كحد أقصى في وقت واحد داخل المهمة الواحدة.",
+          "type": "boolean"
+        },
+        "wait": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepswait",
+          "description": "يوقف المهمة مؤقتًا حتى تكتمل خطوة خلفية واحدة أو أكثر. قدّم معرّف خطوة واحدًا كسلسلة نصية، أو عدة معرّفات كمصفوفة. بعد اكتمال خطوة الانتظار، تصبح مخرجات الخطوات الخلفية المشار إليها متاحة للخطوات اللاحقة.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "wait-all": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepswait-all",
+          "description": "يوقف المهمة مؤقتًا حتى تكتمل جميع الخطوات الخلفية النشطة. الكلمة المفتاحية wait-all لا تأخذ وسائط.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cancel": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscancel",
+          "description": "يُنهي خطوة خلفية قيد التشغيل بشكل سلس. يرسل المُشغّل إلى عملية الخطوة إشارة إنهاء (SIGTERM) حتى تتمكن من التنظيف. تستهدف الكلمة المفتاحية cancel خطوة خلفية واحدة عبر معرّفها.",
+          "type": "string"
+        },
+        "parallel": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsparallel",
+          "description": "يشغّل مجموعة من الخطوات بالتوازي، ثم ينتظر انتهاءها جميعًا قبل المتابعة. كل خطوة في المجموعة تعمل كخطوة خلفية، مع انتظار ضمني في نهاية المجموعة.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "types": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onevent_nametypes",
+      "description": "يختار أنواع النشاط التي ستُطلق تشغيل سير العمل. معظم أحداث GitHub تُطلَق بأكثر من نوع نشاط. على سبيل المثال، حدث مورد release يُطلَق عند نشر إصدار أو إلغاء نشره أو إنشائه أو تعديله أو حذفه أو تعيينه كإصدار تجريبي. تتيح لك الكلمة المفتاحية types تضييق النشاط الذي يتسبب في تشغيل سير العمل. عندما يُطلَق حدث webhook بنوع نشاط واحد فقط، فلا حاجة للكلمة المفتاحية types.\nيمكنك استخدام مصفوفة من أنواع الأحداث. لمزيد من المعلومات حول كل حدث وأنواع نشاطه، راجع https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events.",
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "working-directory": {
+      "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsrun",
+      "description": "باستخدام الكلمة المفتاحية working-directory، يمكنك تحديد مجلد العمل الذي سيُنفَّذ فيه الأمر.",
+      "type": "string"
+    },
+    "jobNeeds": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idneeds",
+      "description": "يحدد المهام التي يجب أن تكتمل بنجاح قبل تشغيل هذه المهمة. يمكن أن يكون سلسلة نصية أو مصفوفة من السلاسل النصية. إذا فشلت مهمة، فستُتخطّى جميع المهام التي تحتاجها ما لم تستخدم تلك المهام عبارة شرطية تجعلها تستمر.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/name"
+          },
+          "minItems": 1
+        },
+        {
+          "$ref": "#/definitions/name"
+        }
+      ]
+    },
+    "matrix": {
+      "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix",
+      "description": "مصفوفة البناء (build matrix) هي مجموعة من الإعدادات المختلفة للبيئة الافتراضية. على سبيل المثال، قد تشغّل مهمة على أكثر من إصدار مدعوم من لغة أو نظام تشغيل أو أداة. كل إعداد هو نسخة من المهمة تعمل وتُبلغ عن حالتها.\nيمكنك تحديد مصفوفة بتقديم مصفوفة لخيارات الإعداد. على سبيل المثال، إذا كانت بيئة GitHub الافتراضية تدعم إصدارات Node.js ‏6 و 8 و 10، فيمكنك تحديد مصفوفة بهذه الإصدارات في matrix.\nعند تعريف مصفوفة لأنظمة التشغيل، يجب أن تعيّن الكلمة المفتاحية المطلوبة runs-on إلى نظام تشغيل المهمة الحالية بدلًا من كتابة اسم نظام التشغيل بشكل ثابت. للوصول إلى اسم نظام التشغيل، يمكنك استخدام معامل السياق matrix.os لتعيين runs-on. لمزيد من المعلومات، راجع https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.",
+      "oneOf": [
+        {
+          "type": "object",
+          "patternProperties": {
+            "^(in|ex)clude$": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#example-including-configurations-in-a-matrix-build",
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/expressionSyntax"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/configuration"
+                    }
+                  },
+                  "minItems": 1
+                }
+              ]
+            }
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/configuration"
+                },
+                "minItems": 1
+              },
+              {
+                "$ref": "#/definitions/expressionSyntax"
+              }
+            ]
+          },
+          "minProperties": 1
+        },
+        {
+          "$ref": "#/definitions/expressionSyntax"
+        }
+      ]
+    },
+    "reusableWorkflowCallJob": {
+      "$comment": "https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow",
+      "description": "يجب أن يكون لكل مهمة معرّف (id) مرتبط بها. المفتاح job_id سلسلة نصية وقيمته خريطة لبيانات إعداد المهمة. يجب استبدال <job_id> بسلسلة نصية فريدة داخل كائن jobs. يجب أن يبدأ <job_id> بحرف أو _ وأن يحتوي فقط على أحرف وأرقام أو - أو _.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idname",
+          "description": "اسم المهمة المعروض على GitHub.",
+          "type": "string"
+        },
+        "needs": {
+          "$ref": "#/definitions/jobNeeds"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissions"
+        },
+        "cache-mode": {
+          "$ref": "#/definitions/cacheMode"
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idif",
+          "description": "يمكنك استخدام الشرط if لمنع تشغيل المهمة ما لم يتحقق شرط معيّن. يمكنك استخدام أي سياق وتعبير مدعومين لإنشاء الشرط.\nالتعبيرات داخل شرط if لا تتطلب صيغة ${{ }}. لمزيد من المعلومات، راجع https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "uses": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_iduses",
+          "description": "موقع وإصدار ملف سير عمل قابل لإعادة الاستخدام لتشغيله كمهمة، بالصيغة './{path/to}/{localfile}.yml' أو '{owner}/{repo}/{path}/{filename}@{ref}'. يمكن أن يكون {ref} قيمة SHA أو وسم إصدار أو اسم فرع. استخدام SHA الخاص بالـ commit هو الأكثر أمانًا من حيث الاستقرار والأمان.",
+          "type": "string",
+          "pattern": "^(.+\\/)+(.+)\\.(ya?ml)(@.+)?$"
+        },
+        "with": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idwith",
+          "$ref": "#/definitions/env",
+          "description": "خريطة للمُدخلات التي تُمرَّر إلى سير العمل المُستدعى. يجب أن تطابق أي مُدخلات تمرّرها مواصفات المُدخلات المعرّفة في سير العمل المُستدعى. على عكس 'jobs.<job_id>.steps[*].with'، فإن المُدخلات التي تمرّرها عبر 'jobs.<job_id>.with' لا تكون متاحة كمتغيرات بيئة في سير العمل المُستدعى. بدلًا من ذلك، يمكنك الإشارة إلى المُدخلات باستخدام سياق inputs."
+        },
+        "secrets": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsecrets",
+          "description": "عند استخدام مهمة لاستدعاء سير عمل قابل لإعادة الاستخدام، يمكنك استخدام 'secrets' لتقديم خريطة بالأسرار التي تُمرَّر إلى سير العمل المُستدعى. يجب أن تطابق أي أسرار تمرّرها الأسماء المعرّفة في سير العمل المُستدعى.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/env"
+            },
+            {
+              "type": "string",
+              "enum": ["inherit"]
+            }
+          ]
+        },
+        "strategy": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy",
+          "description": "تُنشئ الاستراتيجية (strategy) مصفوفة بناء لمهامك. يمكنك تعريف تنويعات مختلفة من البيئة لتشغيل كل مهمة فيها.",
+          "type": "object",
+          "properties": {
+            "matrix": {
+              "$ref": "#/definitions/matrix"
+            },
+            "fail-fast": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast",
+              "description": "عند تعيينه إلى true، يُلغي GitHub جميع المهام قيد التشغيل إذا فشلت أي مهمة في المصفوفة. القيمة الافتراضية: true",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": true
+            },
+            "max-parallel": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel",
+              "description": "الحد الأقصى لعدد المهام التي يمكن تشغيلها في وقت واحد عند استخدام استراتيجية مصفوفة. افتراضيًا، سيزيد GitHub عدد المهام المُشغّلة بالتوازي إلى أقصى حد حسب المُشغّلات المتاحة على الأجهزة الافتراضية المستضافة لدى GitHub.",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["matrix"],
+          "additionalProperties": false
+        },
+        "concurrency": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idconcurrency",
+          "description": "يضمن التزامن (concurrency) أن مهمة أو سير عمل واحدًا فقط يستخدم نفس مجموعة التزامن سيعمل في كل مرة. يمكن أن تكون مجموعة التزامن أي سلسلة نصية أو تعبير. يمكن للتعبير استخدام أي سياق باستثناء سياق secrets. \nيمكنك أيضًا تحديد التزامن على مستوى سير العمل. \nعند وضع مهمة أو سير عمل متزامن في قائمة الانتظار، إذا كانت هناك مهمة أو سير عمل آخر يستخدم نفس مجموعة التزامن في المستودع قيد التشغيل، فستبقى المهمة أو سير العمل المنتظر في حالة انتظار (pending). افتراضيًا يُلغى أي سير عمل أو مهمة كانت في حالة انتظار سابقًا ضمن مجموعة التزامن؛ ويمكن تغيير هذا السلوك باستخدام `queue`. لإلغاء أي مهمة أو سير عمل قيد التشغيل حاليًا ضمن نفس مجموعة التزامن أيضًا، حدّد cancel-in-progress: true.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/concurrency"
+            }
+          ]
+        }
+      },
+      "required": ["uses"],
+      "additionalProperties": false
+    },
+    "normalJob": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_id",
+      "description": "يجب أن يكون لكل مهمة معرّف (id) مرتبط بها. المفتاح job_id سلسلة نصية وقيمته خريطة لبيانات إعداد المهمة. يجب استبدال <job_id> بسلسلة نصية فريدة داخل كائن jobs. يجب أن يبدأ <job_id> بحرف أو _ وأن يحتوي فقط على أحرف وأرقام أو - أو _.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idname",
+          "description": "اسم المهمة المعروض على GitHub.",
+          "type": "string"
+        },
+        "needs": {
+          "$ref": "#/definitions/jobNeeds"
+        },
+        "snapshot": {
+          "$ref": "#/definitions/snapshot"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissions"
+        },
+        "cache-mode": {
+          "$ref": "#/definitions/cacheMode"
+        },
+        "runs-on": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idruns-on",
+          "description": "نوع الجهاز الذي ستُشغَّل عليه المهمة. يمكن أن يكون الجهاز مُشغّلًا مستضافًا لدى GitHub أو مُشغّلًا مستضافًا ذاتيًا (self-hosted).",
+          "anyOf": [
+            {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#github-hosted-runners",
+              "type": "string"
+            },
+            {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#self-hosted-runners",
+              "type": "array",
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1
+                }
+              ]
+            },
+            {
+              "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#choosing-runners-in-a-group",
+              "type": "object",
+              "properties": {
+                "group": {
+                  "type": "string"
+                },
+                "labels": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "$ref": "#/definitions/stringContainingExpressionSyntax"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "environment": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idenvironment",
+          "description": "البيئة التي تشير إليها المهمة.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/environment"
+            }
+          ]
+        },
+        "outputs": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idoutputs",
+          "description": "خريطة لمخرجات المهمة. تكون مخرجات المهمة متاحة لجميع المهام اللاحقة التي تعتمد على هذه المهمة.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "minProperties": 1
+        },
+        "env": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idenv",
+          "$ref": "#/definitions/env",
+          "description": "خريطة لمتغيرات البيئة المتاحة لجميع الخطوات في المهمة."
+        },
+        "defaults": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_iddefaults",
+          "$ref": "#/definitions/defaults",
+          "description": "خريطة للإعدادات الافتراضية التي ستُطبَّق على جميع الخطوات في المهمة."
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idif",
+          "description": "يمكنك استخدام الشرط if لمنع تشغيل المهمة ما لم يتحقق شرط معيّن. يمكنك استخدام أي سياق وتعبير مدعومين لإنشاء الشرط.\nالتعبيرات داخل شرط if لا تتطلب صيغة ${{ }}. لمزيد من المعلومات، راجع https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "steps": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps",
+          "description": "تحتوي المهمة على تسلسل من المهام الفرعية تُسمّى خطوات (steps). يمكن للخطوات تشغيل أوامر، أو تشغيل مهام إعداد، أو تشغيل إجراء من مستودعك أو من مستودع عام أو إجراء منشور في سجل Docker. ليست كل الخطوات تشغّل إجراءات، لكن كل الإجراءات تعمل كخطوة. تعمل كل خطوة في عمليتها الخاصة داخل البيئة الافتراضية ولديها وصول إلى مساحة العمل ونظام الملفات. ولأن الخطوات تعمل في عمليات منفصلة، فإن التغييرات على متغيرات البيئة لا تُحفظ بين الخطوات. يوفّر GitHub خطوات مدمجة لإعداد المهمة وإكمالها.\nيجب أن تحتوي على `uses` أو `run`\n",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          },
+          "minItems": 1
+        },
+        "timeout-minutes": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes",
+          "description": "الحد الأقصى لعدد الدقائق المسموح بتشغيل سير العمل خلالها قبل أن يُلغيه GitHub تلقائيًا. القيمة الافتراضية: 360",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": 360
+        },
+        "strategy": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy",
+          "description": "تُنشئ الاستراتيجية (strategy) مصفوفة بناء لمهامك. يمكنك تعريف تنويعات مختلفة من البيئة لتشغيل كل مهمة فيها.",
+          "type": "object",
+          "properties": {
+            "matrix": {
+              "$ref": "#/definitions/matrix"
+            },
+            "fail-fast": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast",
+              "description": "عند تعيينه إلى true، يُلغي GitHub جميع المهام قيد التشغيل إذا فشلت أي مهمة في المصفوفة. القيمة الافتراضية: true",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": true
+            },
+            "max-parallel": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel",
+              "description": "الحد الأقصى لعدد المهام التي يمكن تشغيلها في وقت واحد عند استخدام استراتيجية مصفوفة. افتراضيًا، سيزيد GitHub عدد المهام المُشغّلة بالتوازي إلى أقصى حد حسب المُشغّلات المتاحة على الأجهزة الافتراضية المستضافة لدى GitHub.",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["matrix"],
+          "additionalProperties": false
+        },
+        "continue-on-error": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error",
+          "description": "يمنع فشل تشغيل سير العمل عند فشل مهمة. عيّنه إلى true للسماح بنجاح تشغيل سير العمل عند فشل هذه المهمة.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "container": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainer",
+          "description": "حاوية لتشغيل أي خطوات في المهمة لم تحدد حاوية بالفعل. إذا كانت لديك خطوات تستخدم إجراءات نصية (script) وإجراءات حاويات معًا، فستعمل إجراءات الحاويات كحاويات شقيقة على نفس الشبكة وبنفس عمليات ربط وحدات التخزين.\nإذا لم تعيّن حاوية، فستعمل جميع الخطوات مباشرة على المضيف المحدد في runs-on ما لم تشر خطوة إلى إجراء مُعدّ ليعمل داخل حاوية.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/jobContainer"
+            }
+          ]
+        },
+        "services": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idservices",
+          "description": "حاويات إضافية لاستضافة خدمات لمهمة في سير العمل. وهي مفيدة لإنشاء قواعد بيانات أو خدمات تخزين مؤقت مثل redis. سيُنشئ المُشغّل على الجهاز الافتراضي شبكة تلقائيًا ويدير دورة حياة حاويات الخدمات.\nعند استخدام حاوية خدمة لمهمة أو عندما تستخدم خطوتك إجراءات حاويات، لا تحتاج إلى تعيين معلومات المنافذ للوصول إلى الخدمة. يكشف Docker تلقائيًا جميع المنافذ بين الحاويات على نفس الشبكة.\nعندما تعمل المهمة والإجراء كلاهما داخل حاوية، يمكنك الإشارة إلى الحاوية مباشرة باسم المضيف الخاص بها. يُربط اسم المضيف تلقائيًا باسم الخدمة.\nعندما لا تستخدم الخطوة إجراء حاوية، يجب الوصول إلى الخدمة باستخدام localhost وربط المنافذ.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/serviceContainer"
+          }
+        },
+        "concurrency": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idconcurrency",
+          "description": "يضمن التزامن (concurrency) أن مهمة أو سير عمل واحدًا فقط يستخدم نفس مجموعة التزامن سيعمل في كل مرة. يمكن أن تكون مجموعة التزامن أي سلسلة نصية أو تعبير. يمكن للتعبير استخدام أي سياق باستثناء سياق secrets. \nيمكنك أيضًا تحديد التزامن على مستوى سير العمل. \nعند وضع مهمة أو سير عمل متزامن في قائمة الانتظار، إذا كانت هناك مهمة أو سير عمل آخر يستخدم نفس مجموعة التزامن في المستودع قيد التشغيل، فستبقى المهمة أو سير العمل المنتظر في حالة انتظار (pending). افتراضيًا يُلغى أي سير عمل أو مهمة كانت في حالة انتظار سابقًا ضمن مجموعة التزامن؛ ويمكن تغيير هذا السلوك باستخدام `queue`. لإلغاء أي مهمة أو سير عمل قيد التشغيل حاليًا ضمن نفس مجموعة التزامن أيضًا، حدّد cancel-in-progress: true.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/concurrency"
+            }
+          ]
+        }
+      },
+      "required": ["runs-on"],
+      "additionalProperties": false
+    },
+    "workflowDispatchInput": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_id",
+      "description": "معرّف نصي يرتبط بالمُدخل. قيمة <input_id> هي خريطة لبيانات وصف المُدخل (metadata). يجب أن يكون <input_id> معرّفًا فريدًا داخل كائن inputs. يجب أن يبدأ <input_id> بحرف أو _ وأن يحتوي فقط على أحرف وأرقام أو - أو _.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddescription",
+          "description": "وصف نصي لمعامل الإدخال.",
+          "type": "string"
+        },
+        "deprecationMessage": {
+          "description": "نص يُعرض للمستخدمين الذين يستخدمون المُدخل المُهمَل (deprecated).",
+          "type": "string"
+        },
+        "required": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_idrequired",
+          "description": "قيمة منطقية (boolean) تشير إلى ما إذا كان الإجراء يتطلب معامل الإدخال. عيّنها إلى true عندما يكون المعامل مطلوبًا.",
+          "type": "boolean"
+        },
+        "default": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddefault",
+          "description": "سلسلة نصية تمثّل القيمة الافتراضية. تُستخدم القيمة الافتراضية عندما لا يُحدَّد معامل الإدخال في ملف سير العمل."
+        },
+        "type": {
+          "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputsinput_idtype",
+          "description": "سلسلة نصية تمثّل نوع المُدخل.",
+          "type": "string",
+          "enum": ["string", "choice", "boolean", "number", "environment"]
+        },
+        "options": {
+          "$comment": "https://github.blog/changelog/2021-11-10-github-actions-input-types-for-manual-workflows",
+          "description": "خيارات القائمة المنسدلة، إذا كان النوع choice.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "string"
+            },
+            "default": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "boolean"
+            },
+            "default": {
+              "type": "boolean"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "default": {
+              "type": "number"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "environment"
+            },
+            "default": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "choice"
+            },
+            "options": {
+              "$ref": "#/definitions/workflowDispatchInput/properties/options"
+            }
+          },
+          "required": ["type", "options"]
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#name",
+      "description": "اسم سير عملك. يعرض GitHub أسماء سير العمل في صفحة Actions الخاصة بمستودعك. إذا حذفت هذا الحقل، فسيعيّن GitHub الاسم إلى اسم ملف سير العمل.",
+      "type": "string"
+    },
+    "on": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#on",
+      "description": "اسم حدث GitHub الذي يُطلق سير العمل. يمكنك تقديم سلسلة نصية لحدث واحد، أو مصفوفة أحداث، أو مصفوفة أنواع أحداث، أو خريطة إعدادات أحداث تُجدول سير العمل أو تقيّد تنفيذه بتغييرات في ملفات أو وسوم أو فروع محددة. للاطلاع على قائمة الأحداث المتاحة، راجع https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/event"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/event"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "branch_protection_rule": {
+              "$comment": "https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#branch_protection_rule",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث branch_protection_rule. يُطلَق هذا الحدث بأكثر من نوع نشاط.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "check_run": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#check-run-event-check_run",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث check_run. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/checks/runs.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "rerequested",
+                          "completed",
+                          "requested_action"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "rerequested",
+                        "completed",
+                        "requested_action"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "check_suite": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#check-suite-event-check_suite",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث check_suite. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/checks/suites/.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["completed", "requested", "rerequested"]
+                      },
+                      "default": ["completed", "requested", "rerequested"]
+                    }
+                  }
+                }
+              ]
+            },
+            "create": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#create-event-create",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يُنشئ فيه أحدهم فرعًا أو وسمًا، مما يُطلق حدث create. للمعلومات حول REST API، راجع https://developer.github.com/v3/git/refs/#create-a-reference."
+            },
+            "delete": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#delete-event-delete",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يحذف فيه أحدهم فرعًا أو وسمًا، مما يُطلق حدث delete. للمعلومات حول REST API، راجع https://developer.github.com/v3/git/refs/#delete-a-reference."
+            },
+            "deployment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#deployment-event-deployment",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يُنشئ فيه أحدهم عملية نشر، مما يُطلق حدث deployment. عمليات النشر التي تُنشأ باستخدام SHA لـ commit قد لا يكون لها مرجع Git. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/deployments/."
+            },
+            "deployment_status": {
+              "$comment": "https://docs.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقدّم فيه طرف ثالث حالة نشر، مما يُطلق حدث deployment_status. عمليات النشر التي تُنشأ باستخدام SHA لـ commit قد لا يكون لها مرجع Git. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/deployments/#create-a-deployment-status."
+            },
+            "discussion": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث discussion. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول GraphQL API، راجع https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "edited",
+                          "deleted",
+                          "transferred",
+                          "pinned",
+                          "unpinned",
+                          "labeled",
+                          "unlabeled",
+                          "locked",
+                          "unlocked",
+                          "category_changed",
+                          "answered",
+                          "unanswered"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "edited",
+                        "deleted",
+                        "transferred",
+                        "pinned",
+                        "unpinned",
+                        "labeled",
+                        "unlabeled",
+                        "locked",
+                        "unlocked",
+                        "category_changed",
+                        "answered",
+                        "unanswered"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "discussion_comment": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث discussion_comment. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول GraphQL API، راجع https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "fork": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#fork-event-fork",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يُنشئ فيه أحدهم نسخة (fork) من مستودع، مما يُطلق حدث fork. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/forks/#create-a-fork."
+            },
+            "gollum": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#gollum-event-gollum",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك عندما يُنشئ أحدهم صفحة Wiki أو يحدّثها، مما يُطلق حدث gollum."
+            },
+            "issue_comment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#issue-comment-event-issue_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث issue_comment. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/issues/comments/.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "issues": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#issues-event-issues",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث issues. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/issues.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "opened",
+                          "edited",
+                          "deleted",
+                          "transferred",
+                          "pinned",
+                          "unpinned",
+                          "closed",
+                          "reopened",
+                          "assigned",
+                          "unassigned",
+                          "labeled",
+                          "unlabeled",
+                          "locked",
+                          "unlocked",
+                          "milestoned",
+                          "demilestoned",
+                          "typed",
+                          "untyped",
+                          "field_added",
+                          "field_removed"
+                        ]
+                      },
+                      "default": [
+                        "opened",
+                        "edited",
+                        "deleted",
+                        "transferred",
+                        "pinned",
+                        "unpinned",
+                        "closed",
+                        "reopened",
+                        "assigned",
+                        "unassigned",
+                        "labeled",
+                        "unlabeled",
+                        "locked",
+                        "unlocked",
+                        "milestoned",
+                        "demilestoned",
+                        "typed",
+                        "untyped",
+                        "field_added",
+                        "field_removed"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "label": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#label-event-label",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث label. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/issues/labels/.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "merge_group": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#merge_group",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك عند إضافة طلب سحب إلى قائمة انتظار الدمج (merge queue)، مما يضيف طلب السحب إلى مجموعة دمج. للمعلومات حول قائمة انتظار الدمج، راجع https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue .",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["checks_requested"]
+                      },
+                      "default": ["checks_requested"]
+                    }
+                  }
+                }
+              ]
+            },
+            "milestone": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#milestone-event-milestone",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث milestone. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/issues/milestones/.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "closed",
+                          "opened",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "closed",
+                        "opened",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "page_build": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#page-build-event-page_build",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يدفع فيه أحدهم إلى فرع مُفعَّل عليه GitHub Pages، مما يُطلق حدث page_build. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/pages/."
+            },
+            "project": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-event-project",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث project. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/projects/.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "updated",
+                          "closed",
+                          "reopened",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "updated",
+                        "closed",
+                        "reopened",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "project_card": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-card-event-project_card",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث project_card. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/projects/cards.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "moved",
+                          "converted",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "moved",
+                        "converted",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "project_column": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-column-event-project_column",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث project_column. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/projects/columns.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "updated", "moved", "deleted"]
+                      },
+                      "default": ["created", "updated", "moved", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "public": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#public-event-public",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يجعل فيه أحدهم مستودعًا خاصًا عامًا، مما يُطلق حدث public. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/#edit."
+            },
+            "pull_request": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-event-pull_request",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث pull_request. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/pulls.\nملاحظة: لا يعمل سير العمل على المستودعات الأساسية الخاصة عند فتح طلب سحب من مستودع منسوخ (fork).\nعند إنشاء طلب سحب من مستودع منسوخ إلى المستودع الأساسي، يرسل GitHub حدث pull_request إلى المستودع الأساسي ولا تقع أي أحداث لطلبات السحب على المستودع المنسوخ.\nلا يعمل سير العمل على المستودعات المنسوخة افتراضيًا. يجب تفعيل GitHub Actions من تبويب Actions في المستودع المنسوخ.\nصلاحيات GITHUB_TOKEN في المستودعات المنسوخة للقراءة فقط. لمزيد من المعلومات حول GITHUB_TOKEN، راجع https://help.github.com/en/articles/virtual-environments-for-github-actions.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "types": {
+                          "$ref": "#/definitions/types",
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "unassigned",
+                              "labeled",
+                              "unlabeled",
+                              "opened",
+                              "edited",
+                              "closed",
+                              "reopened",
+                              "synchronize",
+                              "converted_to_draft",
+                              "ready_for_review",
+                              "locked",
+                              "unlocked",
+                              "milestoned",
+                              "demilestoned",
+                              "review_requested",
+                              "review_request_removed",
+                              "auto_merge_enabled",
+                              "auto_merge_disabled",
+                              "enqueued",
+                              "dequeued"
+                            ]
+                          },
+                          "default": ["opened", "synchronize", "reopened"]
+                        },
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "pull_request_review": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-review-event-pull_request_review",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث pull_request_review. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/pulls/reviews.\nملاحظة: لا يعمل سير العمل على المستودعات الأساسية الخاصة عند فتح طلب سحب من مستودع منسوخ (fork).\nعند إنشاء طلب سحب من مستودع منسوخ إلى المستودع الأساسي، يرسل GitHub حدث pull_request إلى المستودع الأساسي ولا تقع أي أحداث لطلبات السحب على المستودع المنسوخ.\nلا يعمل سير العمل على المستودعات المنسوخة افتراضيًا. يجب تفعيل GitHub Actions من تبويب Actions في المستودع المنسوخ.\nصلاحيات GITHUB_TOKEN في المستودعات المنسوخة للقراءة فقط. لمزيد من المعلومات حول GITHUB_TOKEN، راجع https://help.github.com/en/articles/virtual-environments-for-github-actions.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["submitted", "edited", "dismissed"]
+                      },
+                      "default": ["submitted", "edited", "dismissed"]
+                    }
+                  }
+                }
+              ]
+            },
+            "pull_request_review_comment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-review-comment-event-pull_request_review_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يُعدَّل فيه تعليق على الفروقات الموحّدة (unified diff) لطلب سحب، مما يُطلق حدث pull_request_review_comment. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/pulls/comments.\nملاحظة: لا يعمل سير العمل على المستودعات الأساسية الخاصة عند فتح طلب سحب من مستودع منسوخ (fork).\nعند إنشاء طلب سحب من مستودع منسوخ إلى المستودع الأساسي، يرسل GitHub حدث pull_request إلى المستودع الأساسي ولا تقع أي أحداث لطلبات السحب على المستودع المنسوخ.\nلا يعمل سير العمل على المستودعات المنسوخة افتراضيًا. يجب تفعيل GitHub Actions من تبويب Actions في المستودع المنسوخ.\nصلاحيات GITHUB_TOKEN في المستودعات المنسوخة للقراءة فقط. لمزيد من المعلومات حول GITHUB_TOKEN، راجع https://help.github.com/en/articles/virtual-environments-for-github-actions.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "pull_request_target": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#pull_request_target",
+              "description": "هذا الحدث مشابه لـ pull_request، إلا أنه يعمل في سياق المستودع الأساسي لطلب السحب، وليس في commit الدمج. هذا يعني أنه يمكنك إتاحة أسرارك بشكل أكثر أمانًا لسير العمل الذي يُطلقه طلب السحب، لأنه لا يُشغَّل إلا سير العمل المعرّف في الـ commit على المستودع الأساسي. على سبيل المثال، يتيح لك هذا الحدث إنشاء سير عمل يضيف تصنيفات وتعليقات على طلبات السحب بناءً على محتويات حمولة الحدث (payload).",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "types": {
+                          "$ref": "#/definitions/types",
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "unassigned",
+                              "labeled",
+                              "unlabeled",
+                              "opened",
+                              "edited",
+                              "closed",
+                              "reopened",
+                              "synchronize",
+                              "converted_to_draft",
+                              "ready_for_review",
+                              "locked",
+                              "unlocked",
+                              "review_requested",
+                              "review_request_removed",
+                              "auto_merge_enabled",
+                              "auto_merge_disabled"
+                            ]
+                          },
+                          "default": ["opened", "synchronize", "reopened"]
+                        },
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "push": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#push-event-push",
+              "description": "يشغّل سير عملك عندما يدفع أحدهم إلى فرع في المستودع، مما يُطلق حدث push.\nملاحظة: حمولة webhook المتاحة لـ GitHub Actions لا تتضمن السمات added و removed و modified في كائن الـ commit. يمكنك استرجاع كائن الـ commit كاملًا باستخدام REST API. لمزيد من المعلومات، راجع https://developer.github.com/v3/repos/commits/#get-a-single-commit.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "registry_package": {
+              "$comment": "https://help.github.com/en/actions/reference/events-that-trigger-workflows#registry-package-event-registry_package",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت تُنشر فيه حزمة أو تُحدَّث. لمزيد من المعلومات، راجع https://help.github.com/en/github/managing-packages-with-github-packages.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["published", "updated"]
+                      },
+                      "default": ["published", "updated"]
+                    }
+                  }
+                }
+              ]
+            },
+            "release": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#release-event-release",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث release. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/releases/ في وثائق GitHub للمطوّرين.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "published",
+                          "unpublished",
+                          "created",
+                          "edited",
+                          "deleted",
+                          "prereleased",
+                          "released"
+                        ]
+                      },
+                      "default": [
+                        "published",
+                        "unpublished",
+                        "created",
+                        "edited",
+                        "deleted",
+                        "prereleased",
+                        "released"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "status": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#status-event-status",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت تتغير فيه حالة commit في Git، مما يُطلق حدث status. للمعلومات حول REST API، راجع https://developer.github.com/v3/repos/statuses/."
+            },
+            "watch": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#watch-event-watch",
+              "$ref": "#/definitions/eventObject",
+              "description": "يشغّل سير عملك في أي وقت يقع فيه حدث watch. يُطلَق هذا الحدث بأكثر من نوع نشاط. للمعلومات حول REST API، راجع https://developer.github.com/v3/activity/starring/."
+            },
+            "workflow_call": {
+              "$comment": "https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_call",
+              "description": "يسمح بإعادة استخدام سير العمل من قِبل سير عمل آخر.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "inputs": {
+                      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onworkflow_callinputs",
+                      "description": "عند استخدام الكلمة المفتاحية workflow_call، يمكنك اختياريًا تحديد مُدخلات تُمرَّر إلى سير العمل المُستدعى من سير العمل المُستدعي.",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputsinput_id",
+                          "description": "معرّف نصي يرتبط بالمُدخل. قيمة <input_id> هي خريطة لبيانات وصف المُدخل (metadata). يجب أن يكون <input_id> معرّفًا فريدًا داخل كائن inputs. يجب أن يبدأ <input_id> بحرف أو _ وأن يحتوي فقط على أحرف وأرقام أو - أو _.",
+                          "type": "object",
+                          "properties": {
+                            "description": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddescription",
+                              "description": "وصف نصي لمعامل الإدخال.",
+                              "type": "string"
+                            },
+                            "required": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_idrequired",
+                              "description": "قيمة منطقية (boolean) تشير إلى ما إذا كان الإجراء يتطلب معامل الإدخال. عيّنها إلى true عندما يكون المعامل مطلوبًا.",
+                              "type": "boolean"
+                            },
+                            "type": {
+                              "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callinput_idtype",
+                              "description": "مطلوب إذا تم تعريف مُدخل للكلمة المفتاحية on.workflow_call. قيمة هذا المعامل سلسلة نصية تحدد نوع بيانات المُدخل، ويجب أن تكون إحدى القيم: boolean أو number أو string.",
+                              "type": "string",
+                              "enum": ["boolean", "number", "string"]
+                            },
+                            "default": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddefault",
+                              "description": "تُستخدم القيمة الافتراضية عندما لا يُحدَّد معامل الإدخال في ملف سير العمل.",
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["type"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "outputs": {
+                      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onworkflow_calloutputs",
+                      "description": "عند استخدام الكلمة المفتاحية workflow_call، يمكنك اختياريًا تحديد مُدخلات تُمرَّر إلى سير العمل المُستدعى من سير العمل المُستدعي.",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_id",
+                          "description": "معرّف نصي يرتبط بالمُخرج. قيمة <output_id> هي خريطة لبيانات وصف المُخرج (metadata). يجب أن يكون <output_id> معرّفًا فريدًا داخل كائن outputs. يجب أن يبدأ <output_id> بحرف أو _ وأن يحتوي فقط على أحرف وأرقام أو - أو _.",
+                          "type": "object",
+                          "properties": {
+                            "description": {
+                              "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_iddescription",
+                              "description": "وصف نصي لمعامل الإخراج.",
+                              "type": "string"
+                            },
+                            "value": {
+                              "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_idvalue",
+                              "description": "القيمة التي سيُربط بها معامل الإخراج. يمكنك تعيينها إلى سلسلة نصية أو تعبير يحتوي على سياق. على سبيل المثال، يمكنك استخدام سياق steps لتعيين قيمة المُخرج إلى قيمة مُخرج خطوة ما.",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["value"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "secrets": {
+                      "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecrets",
+                      "type": "object",
+                      "description": "خريطة بالأسرار التي يمكن استخدامها في سير العمل المُستدعى. داخل سير العمل المُستدعى، يمكنك استخدام سياق secrets للإشارة إلى سرّ.",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecretssecret_id",
+                          "type": "object",
+                          "description": "معرّف نصي يرتبط بالسرّ.",
+                          "properties": {
+                            "description": {
+                              "description": "وصف نصي لمعامل السرّ.",
+                              "type": "string"
+                            },
+                            "required": {
+                              "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecretssecret_idrequired",
+                              "description": "قيمة منطقية (boolean) تحدد ما إذا كان يجب تقديم السرّ.",
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              ]
+            },
+            "workflow_dispatch": {
+              "$comment": "https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/",
+              "$ref": "#/definitions/eventObject",
+              "description": "يمكنك الآن إنشاء سير عمل يُطلَق يدويًا باستخدام حدث workflow_dispatch الجديد. سيظهر لك بعد ذلك زر 'Run workflow' في تبويب Actions، مما يتيح لك إطلاق تشغيل بسهولة.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "inputs": {
+                      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputs",
+                      "description": "تتيح لك معاملات الإدخال تحديد البيانات التي يتوقع الإجراء استخدامها أثناء التشغيل. يخزّن GitHub معاملات الإدخال كمتغيرات بيئة. تُحوَّل معرّفات المُدخلات التي تحتوي على أحرف كبيرة إلى أحرف صغيرة أثناء التشغيل. نوصي باستخدام معرّفات مُدخلات بأحرف صغيرة.",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$ref": "#/definitions/workflowDispatchInput"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "workflow_run": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_run",
+              "$ref": "#/definitions/eventObject",
+              "description": "يقع هذا الحدث عند طلب تشغيل سير عمل أو اكتماله، ويتيح لك تنفيذ سير عمل بناءً على النتيجة النهائية لسير عمل آخر. على سبيل المثال، إذا كان سير عمل pull_request لديك يُنتج مخرجات بناء (build artifacts)، فيمكنك إنشاء سير عمل جديد يستخدم workflow_run لتحليل النتائج وإضافة تعليق على طلب السحب الأصلي.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["requested", "completed", "in_progress"]
+                      },
+                      "default": ["requested", "completed"]
+                    },
+                    "workflows": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "patternProperties": {
+                    "^branches(-ignore)?$": {}
+                  }
+                }
+              ]
+            },
+            "repository_dispatch": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#external-events-repository_dispatch",
+              "$ref": "#/definitions/eventObject",
+              "description": "يمكنك استخدام GitHub API لإطلاق حدث webhook يُسمّى repository_dispatch عندما تريد إطلاق سير عمل لنشاط يحدث خارج GitHub. لمزيد من المعلومات، راجع https://developer.github.com/v3/repos/#create-a-repository-dispatch-event.\nلإطلاق حدث webhook المخصص repository_dispatch، يجب إرسال طلب POST إلى نقطة نهاية في GitHub API وتقديم اسم event_type لوصف نوع النشاط. ولإطلاق تشغيل سير العمل، يجب أيضًا ضبط سير عملك لاستخدام حدث repository_dispatch."
+            },
+            "schedule": {
+              "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule",
+              "description": "يمكنك جدولة سير عمل ليعمل في أوقات محددة بتوقيت UTC باستخدام صيغة POSIX cron ‏(https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html#tag_20_25_07). يمكنك اختياريًا تحديد منطقة زمنية باستخدام سلسلة منطقة زمنية بصيغة IANA ‏(https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) لجدولة تراعي المنطقة الزمنية. يعمل سير العمل المجدول على أحدث commit في الفرع الافتراضي أو الأساسي. أقصر فاصل زمني يمكنك تشغيل سير العمل المجدول به هو مرة كل 5 دقائق.\nملاحظة: لا يدعم GitHub Actions الصيغ غير القياسية @yearly و @monthly و @weekly و @daily و @hourly و @reboot.\nيمكنك استخدام crontab guru ‏(https://crontab.guru/) للمساعدة في إنشاء صيغة cron والتأكد من وقت التشغيل. ولمساعدتك على البدء، هناك أيضًا قائمة بأمثلة crontab guru ‏(https://crontab.guru/examples.html).",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cron": {
+                    "description": "تعبير cron يمثّل جدولًا زمنيًا. سيعمل سير العمل المجدول مرة واحدة كل 5 دقائق على الأكثر.",
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "description": "سلسلة نصية تمثّل المنطقة الزمنية التي سيعمل سير العمل المجدول بالنسبة إليها، بصيغة IANA (مثل 'America/New_York' أو 'Europe/London'). إذا حُذفت، فسيعمل سير العمل بالنسبة إلى منتصف الليل بتوقيت UTC.",
+                    "type": "string"
+                  }
+                },
+                "required": ["cron"],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "env": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#env",
+      "$ref": "#/definitions/env",
+      "description": "خريطة لمتغيرات البيئة المتاحة لجميع المهام والخطوات في سير العمل."
+    },
+    "defaults": {
+      "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#defaults",
+      "$ref": "#/definitions/defaults",
+      "description": "خريطة للإعدادات الافتراضية التي ستُطبَّق على جميع المهام في سير العمل."
+    },
+    "concurrency": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency",
+      "description": "يضمن التزامن (concurrency) أن مهمة أو سير عمل واحدًا فقط يستخدم نفس مجموعة التزامن سيعمل في كل مرة. يمكن أن تكون مجموعة التزامن أي سلسلة نصية أو تعبير. يمكن للتعبير استخدام أي سياق باستثناء سياق secrets. \nيمكنك أيضًا تحديد التزامن على مستوى سير العمل. \nعند وضع مهمة أو سير عمل متزامن في قائمة الانتظار، إذا كانت هناك مهمة أو سير عمل آخر يستخدم نفس مجموعة التزامن في المستودع قيد التشغيل، فستبقى المهمة أو سير العمل المنتظر في حالة انتظار (pending). افتراضيًا يُلغى أي سير عمل أو مهمة كانت في حالة انتظار سابقًا ضمن مجموعة التزامن؛ ويمكن تغيير هذا السلوك باستخدام `queue`. لإلغاء أي مهمة أو سير عمل قيد التشغيل حاليًا ضمن نفس مجموعة التزامن أيضًا، حدّد cancel-in-progress: true.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/concurrency"
+        }
+      ]
+    },
+    "cache-mode": {
+      "$ref": "#/definitions/cacheMode"
+    },
+    "jobs": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobs",
+      "description": "يتكوّن تشغيل سير العمل من مهمة واحدة أو أكثر. تعمل المهام بالتوازي افتراضيًا. لتشغيل المهام بالتتابع، يمكنك تعريف اعتماديات على مهام أخرى باستخدام الكلمة المفتاحية jobs.<job_id>.needs.\nتعمل كل مهمة في نسخة جديدة من البيئة الافتراضية المحددة في runs-on.\nيمكنك تشغيل عدد غير محدود من المهام طالما أنك ضمن حدود استخدام سير العمل. لمزيد من المعلومات، راجع https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#usage-limits.",
+      "type": "object",
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/normalJob"
+            },
+            {
+              "$ref": "#/definitions/reusableWorkflowCallJob"
+            }
+          ]
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "run-name": {
+      "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#run-name",
+      "description": "اسم تشغيلات سير العمل التي يُنشئها سير العمل. يعرض GitHub اسم التشغيل في قائمة تشغيلات سير العمل في تبويب 'Actions' بمستودعك.",
+      "type": "string"
+    },
+    "permissions": {
+      "$ref": "#/definitions/permissions"
+    }
+  },
+  "required": ["on", "jobs"],
+  "type": "object"
+}

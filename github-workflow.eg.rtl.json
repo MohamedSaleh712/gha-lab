@@ -1,0 +1,2308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json.schemastore.org/github-workflow.json",
+  "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions",
+  "additionalProperties": false,
+  "definitions": {
+    "architecture": {
+      "type": "string",
+      "enum": ["ARM32", "x64", "x86"]
+    },
+    "branch": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onpushpull_requestbranchestags",
+      "$ref": "#/definitions/globs",
+      "description": "\u2067لما تستخدم الـ events بتوع push و pull_request، تقدر تخلّي الـ workflow يشتغل على branches أو tags معيّنة. لو حدّدت tags بس أو branches بس، الـ workflow مش هيشتغل مع الـ events اللي تخص نوع الـ Git ref اللي ما حدّدتوش.\u2069\n\u2067الكلمات branches و branches-ignore و tags و tags-ignore بتقبل glob patterns فيها * و ** عشان تمسك أكتر من اسم branch أو tag مرة واحدة. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet.\u2069\n\u2067الـ patterns اللي بتكتبها في branches و tags بتتقارن باسم الـ Git ref. يعني مثلًا لو كتبت mona/octocat في branches هيمسك الـ ref ‏refs/heads/mona/octocat، و releases/** هيمسك refs/heads/releases/10.\u2069\n\u2067عندك نوعين فلاتر تقدر تمنع بيهم الـ workflow إنه يشتغل مع الـ push والـ pull requests على tags و branches:\u2069\n- \u2067branches أو branches-ignore - ماينفعش تستخدم الاتنين مع بعض لنفس الـ event. استخدم branches لما تكون عاوز تحدّد branches معيّنة وتستبعد branches تانية معاها، واستخدم branches-ignore لما تكون عاوز تستبعد بس.\u2069\n- \u2067tags أو tags-ignore - ماينفعش تستخدم الاتنين مع بعض لنفس الـ event. استخدم tags لما تكون عاوز تحدّد tags معيّنة وتستبعد tags تانية معاها، واستخدم tags-ignore لما تكون عاوز تستبعد بس.\u2069\n\u2067تقدر تستبعد tags و branches بإنك تحط ! قبل الـ pattern. وخلي بالك إن ترتيب الـ patterns بيفرق:\u2069\n- \u2067pattern بـ ! ييجي بعد pattern عادي ماسك الـ ref هيستبعده.\u2069\n- \u2067pattern عادي ييجي بعد pattern بـ ! هيرجّع الـ ref تاني.\u2069"
+    },
+    "cacheMode": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#cache-mode",
+      "description": "\u2067بيتحكم في صلاحية الـ workflow أو الـ job على الـ cache بتاع GitHub Actions.\u2069",
+      "type": "string",
+      "enum": ["read", "write", "write-only", "none"]
+    },
+    "concurrency": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run-1",
+          "description": "\u2067لو job أو workflow دخل الطابور وفيه واحد تاني شغال دلوقتي بنفس الـ concurrency group في نفس الـ repo، الجديد هيستنى (pending). وبشكل افتراضي أي واحد كان مستني قبله في نفس الـ group بيتلغي، وتقدر تغيّر ده بـ `queue`.\u2069",
+          "type": "string"
+        },
+        "cancel-in-progress": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run-1",
+          "description": "\u2067لو عاوز تلغي أي job أو workflow شغال دلوقتي في نفس الـ concurrency group، حط cancel-in-progress: true.\u2069",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "queue": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#example-queueing-multiple-pending-runs",
+          "description": "\u2067بيحدد إزاي الـ jobs أو الـ runs اللي مستنية بتترص في طابور الـ concurrency group. مع القيمة الافتراضية `single` ماينفعش يبقى فيه غير run واحد مستني بس، وأي run جديد بيلغي اللي قبله. ومع `max` ممكن يستنى لحد 100 run، وبيتنفذوا بالدور (اللي جه الأول يتنفذ الأول). وماينفعش تجمع `queue: max` مع `cancel-in-progress: true`.\u2069",
+          "type": "string",
+          "enum": ["single", "max"],
+          "default": "single"
+        }
+      },
+      "required": ["group"],
+      "additionalProperties": false
+    },
+    "configuration": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/configuration"
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/configuration"
+          }
+        }
+      ]
+    },
+    "jobContainer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerimage",
+          "description": "\u2067الـ Docker image اللي هتشتغل كـ container للـ action. ممكن تكون اسم image على Docker Hub أو اسم registry.\u2069",
+          "type": "string"
+        },
+        "credentials": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainercredentials",
+          "description": "\u2067لو الـ registry بتاع الـ image محتاج تسجيل دخول عشان تعمل pull، استخدم credentials وحط فيها الـ username والـ password. هي نفس البيانات اللي بتديها لأمر `docker login`.\u2069",
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "env": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerenv",
+          "$ref": "#/definitions/env",
+          "description": "\u2067متغيرات البيئة (environment variables) اللي هتتحط جوه الـ container.\u2069"
+        },
+        "ports": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainerports",
+          "description": "\u2067قايمة الـ ports اللي هتتفتح على الـ container.\u2069",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "volumes": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainervolumes",
+          "description": "\u2067قايمة الـ volumes اللي الـ container هيستخدمها. الـ volumes بتخليك تشارك داتا بين الـ services أو بين الـ steps في نفس الـ job. ممكن تستخدم Docker volumes ليها اسم، أو من غير اسم، أو تربط فولدر من الجهاز نفسه (bind mount).\u2069\n\u2067عشان تحدد volume اكتب المصدر والمكان اللي هيتركّب فيه كده: <source>:<destinationPath>\u2069\n\u2067‏<source> ده اسم الـ volume أو مسار كامل على الجهاز، و <destinationPath> مسار كامل جوه الـ container.\u2069",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "options": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontaineroptions",
+          "description": "\u2067إعدادات إضافية لموارد الـ Docker container. لو عاوز تشوف كل الخيارات المتاحة شوف https://docs.docker.com/engine/reference/commandline/create/#options.\u2069",
+          "type": "string"
+        }
+      },
+      "required": ["image"],
+      "additionalProperties": false
+    },
+    "serviceContainer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idimage",
+          "description": "\u2067الـ Docker image اللي هتشتغل كـ service container. ممكن تكون اسم image على Docker Hub أو اسم registry.\u2069",
+          "type": "string"
+        },
+        "credentials": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idcredentials",
+          "description": "\u2067لو الـ registry بتاع الـ image محتاج تسجيل دخول عشان تعمل pull، استخدم credentials وحط فيها الـ username والـ password. هي نفس البيانات اللي بتديها لأمر `docker login`.\u2069",
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "env": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idenv",
+          "$ref": "#/definitions/env",
+          "description": "\u2067متغيرات البيئة (environment variables) اللي هتتحط جوه الـ service container.\u2069"
+        },
+        "ports": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idports",
+          "description": "\u2067قايمة الـ ports اللي هتتفتح على الـ service container.\u2069",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "volumes": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idvolumes",
+          "description": "\u2067قايمة الـ volumes اللي الـ service container هيستخدمها. الـ volumes بتخليك تشارك داتا بين الـ services أو بين الـ steps في نفس الـ job. ممكن تستخدم Docker volumes ليها اسم، أو من غير اسم، أو تربط فولدر من الجهاز نفسه (bind mount).\u2069\n\u2067عشان تحدد volume اكتب المصدر والمكان اللي هيتركّب فيه كده: <source>:<destinationPath>\u2069\n\u2067‏<source> ده اسم الـ volume أو مسار كامل على الجهاز، و <destinationPath> مسار كامل جوه الـ container.\u2069",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "options": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idoptions",
+          "description": "\u2067إعدادات إضافية لموارد الـ Docker container. لو عاوز تشوف كل الخيارات المتاحة شوف https://docs.docker.com/engine/reference/commandline/create/#options.\u2069",
+          "type": "string"
+        },
+        "command": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_idcommand",
+          "description": "\u2067بيغيّر الأمر الافتراضي بتاع الـ image ‏(`CMD`). القيمة بتتبعت كـ arguments بعد اسم الـ image في أمر `docker create`. ولو حطيت `entrypoint` كمان، يبقى `command` هو الـ arguments اللي بتتبعت للـ entrypoint ده.\u2069",
+          "type": "string"
+        },
+        "entrypoint": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idservicesservice_identrypoint",
+          "description": "\u2067بيغيّر الـ `ENTRYPOINT` الافتراضي بتاع الـ image. القيمة نص واحد بيحدد البرنامج اللي هيشتغل. استخدمه لما تكون عاوز تشيل الـ entrypoint بتاع الـ image خالص وتحط غيره. وتقدر تستخدم `entrypoint` مع `command` عشان تبعت arguments للـ entrypoint الجديد.\u2069",
+          "type": "string"
+        }
+      },
+      "required": ["image"],
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "object",
+          "properties": {
+            "shell": {
+              "$ref": "#/definitions/shell"
+            },
+            "working-directory": {
+              "$ref": "#/definitions/working-directory"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "permissions": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions",
+      "description": "\u2067تقدر تعدّل الصلاحيات الافتراضية اللي واخدها الـ GITHUB_TOKEN، تزوّد أو تشيل حسب احتياجك، عشان ماتديش غير أقل صلاحيات محتاجها بس.\u2069",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["read-all", "write-all"]
+        },
+        {
+          "$ref": "#/definitions/permissions-event"
+        }
+      ]
+    },
+    "permissions-event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "artifact-metadata": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "attestations": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "checks": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "code-quality": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "contents": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "deployments": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "discussions": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "id-token": {
+          "type": "string",
+          "enum": ["write", "none"]
+        },
+        "issues": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "models": {
+          "type": "string",
+          "enum": ["read", "none"]
+        },
+        "packages": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "pages": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "pull-requests": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "repository-projects": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "security-events": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "statuses": {
+          "$ref": "#/definitions/permissions-level"
+        },
+        "vulnerability-alerts": {
+          "type": "string",
+          "enum": ["read", "none"]
+        },
+        "copilot-requests": {
+          "type": "string",
+          "enum": ["write"]
+        }
+      }
+    },
+    "permissions-level": {
+      "type": "string",
+      "enum": ["read", "write", "none"]
+    },
+    "env": {
+      "$comment": "https://docs.github.com/en/actions/learn-github-actions/environment-variables",
+      "description": "\u2067عشان تعمل متغيرات بيئة خاصة بيك لازم تكتبها في ملف الـ workflow. تقدر تعرّفها لـ step أو لـ job أو للـ workflow كله باستخدام jobs.<job_id>.steps[*].env و jobs.<job_id>.env و env. لو عاوز تفاصيل أكتر شوف https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsenv\u2069",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        {
+          "$ref": "#/definitions/stringContainingExpressionSyntax"
+        }
+      ]
+    },
+    "environment": {
+      "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idenvironment",
+      "description": "\u2067الـ environment اللي الـ job بيشاور عليها\u2069",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#example-using-a-single-environment-name",
+          "description": "\u2067اسم الـ environment زي ما هو متظبط في الـ repo.\u2069",
+          "type": "string"
+        },
+        "url": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#example-using-environment-name-and-url",
+          "description": "\u2067لينك الـ deployment\u2069",
+          "type": "string"
+        },
+        "deployment": {
+          "$comment": "https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments#using-environments-without-deployments",
+          "description": "\u2067هل يتعمل deployment للـ job ده ولا لأ. لو حطيته false، الـ job هيقدر يستخدم الـ secrets والمتغيرات بتاعة الـ environment من غير ما يتسجّل deployment. وبرضه هيفضل يستنى الـ wait timers وموافقة الـ reviewers المطلوبين.\u2069",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": true
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "event": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows",
+      "type": "string",
+      "enum": [
+        "branch_protection_rule",
+        "check_run",
+        "check_suite",
+        "create",
+        "delete",
+        "deployment",
+        "deployment_status",
+        "discussion",
+        "discussion_comment",
+        "fork",
+        "gollum",
+        "issue_comment",
+        "issues",
+        "label",
+        "merge_group",
+        "milestone",
+        "page_build",
+        "project",
+        "project_card",
+        "project_column",
+        "public",
+        "pull_request",
+        "pull_request_review",
+        "pull_request_review_comment",
+        "pull_request_target",
+        "push",
+        "registry_package",
+        "release",
+        "status",
+        "watch",
+        "workflow_call",
+        "workflow_dispatch",
+        "workflow_run",
+        "repository_dispatch"
+      ]
+    },
+    "eventObject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expressionSyntax": {
+      "$comment": "escape `{` and `}` in pattern to be unicode compatible (#1360)",
+      "type": "string",
+      "pattern": "^\\$\\{\\{(.|[\r\n])*\\}\\}$"
+    },
+    "stringContainingExpressionSyntax": {
+      "$comment": "escape `{` and `}` in pattern to be unicode compatible (#1360)",
+      "type": "string",
+      "pattern": "^.*\\$\\{\\{(.|[\r\n])*\\}\\}.*$"
+    },
+    "globs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "machine": {
+      "type": "string",
+      "enum": ["linux", "macos", "windows"]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[_a-zA-Z][a-zA-Z0-9_-]*$"
+    },
+    "path": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onpushpull_requestpaths",
+      "$ref": "#/definitions/globs",
+      "description": "\u2067لما تستخدم الـ events بتوع push و pull_request، تقدر تخلّي الـ workflow يشتغل لو فيه ملف واحد على الأقل مش ماشي مع paths-ignore، أو لو فيه ملف واحد على الأقل اتعدّل وماشي مع الـ paths اللي حطيتها. فلاتر الـ paths مابتتطبقش على الـ push للـ tags.\u2069\n\u2067الكلمتين paths-ignore و paths بيقبلوا glob patterns فيها * و ** عشان تمسك أكتر من مسار مرة واحدة. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet.\u2069\n\u2067تقدر تستبعد مسارات بنوعين فلاتر، بس ماينفعش تستخدم الاتنين مع بعض لنفس الـ event:\u2069\n- \u2067paths-ignore - استخدمه لما تكون عاوز تستبعد مسارات بس.\u2069\n- \u2067paths - استخدمه لما تكون عاوز تحدد مسارات معيّنة وتستبعد مسارات تانية معاها.\u2069"
+    },
+    "shell": {
+      "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell",
+      "description": "\u2067تقدر تغيّر الـ shell الافتراضي في نظام التشغيل بتاع الـ runner بالكلمة shell. يا إما تستخدم واحد من الـ shells الجاهزة، يا إما تكتب إعدادات shell بنفسك.\u2069",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#custom-shell",
+          "type": "string",
+          "enum": ["bash", "pwsh", "python", "sh", "cmd", "powershell"]
+        }
+      ]
+    },
+    "snapshot": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot",
+      "description": "\u2067تقدر تستخدم `jobs.<job_id>.snapshot` عشان تعمل image مخصوصة ليك.\u2069\n\u2067ضيف snapshot للـ job، يا إما كنص يا إما كـ map، زي ما هو موضح في https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#generating-a-custom-image.\u2069\n\u2067كل job فيه snapshot بيطلّع image لوحده. لو عاوز image واحدة بس أو version واحد، حط كل الـ steps في job واحد. وكل مرة الـ job ده يخلص بنجاح بيطلّع version جديد من الـ image.\u2069\n\u2067لو عاوز تفاصيل أكتر شوف https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images.\u2069",
+      "oneOf": [
+        {
+          "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#string-syntax",
+          "type": "string",
+          "description": "\u2067لو كتبت `snapshot` كنص يبقى ده اسم الـ image. الطريقة دي بتعمل image جديدة، أو بتزوّد version جديد على image موجودة بنفس الاسم. وماينفعش تحدد رقم version بالطريقة دي.\u2069"
+        },
+        {
+          "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#mapping-syntax",
+          "type": "object",
+          "additionalProperties": false,
+          "description": "\u2067لو كتبت `snapshot` كـ map تقدر تحدد `image-name` و `version` (اختياري). لو حددت major version وهو موجود قبل كده، الـ minor بيزيد لوحده. والـ patch versions مش مدعومة.\u2069",
+          "properties": {
+            "image-name": {
+              "type": "string"
+            },
+            "version": {
+              "$comment": "https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images#specifying-a-version-in-your-workflow",
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+|\\*)?$"
+            }
+          },
+          "required": ["image-name"]
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependencies": {
+        "working-directory": ["run"],
+        "shell": ["run"]
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "uses": true
+          },
+          "required": ["uses"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": true
+          },
+          "required": ["run"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "wait": true
+          },
+          "required": ["wait"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "wait-all": true
+          },
+          "required": ["wait-all"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cancel": true
+          },
+          "required": ["cancel"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "parallel": true
+          },
+          "required": ["parallel"]
+        }
+      ],
+      "properties": {
+        "id": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsid",
+          "description": "\u2067id مميز للـ step. تقدر تستخدمه عشان تشاور على الـ step ده في الـ contexts. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.\u2069",
+          "type": "string"
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsif",
+          "description": "\u2067تقدر تستخدم if عشان الـ step مايشتغلش غير لما شرط معيّن يتحقق. وتقدر تستخدم أي context أو expression مدعوم في الشرط.\u2069\n\u2067الـ expressions جوه if مش محتاجة ${{ }}. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.\u2069",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsname",
+          "description": "\u2067اسم الـ step اللي هيظهر على GitHub.\u2069",
+          "type": "string"
+        },
+        "uses": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses",
+          "description": "\u2067بتختار action يشتغل كجزء من step في الـ job بتاعك. الـ action ده حتة كود جاهزة تقدر تستخدمها كذا مرة. ممكن تستخدم action موجود في نفس الـ repo بتاع الـ workflow، أو في repo عام، أو في Docker image منشورة (https://hub.docker.com/).\u2069\n\u2067بننصحك جدًا تحدد version الـ action اللي بتستخدمه، يا إما بـ Git ref أو SHA أو Docker tag. لو ماحددتش، الـ workflow ممكن يبوظ أو يعمل حاجات غريبة لما صاحب الـ action ينزّل تحديث.\u2069\n- \u2067إنك تستخدم الـ commit SHA بتاع version منشور هو الأأمن من ناحية الثبات والأمان.\u2069\n- \u2067إنك تستخدم major version محدد بيخليك تاخد الإصلاحات المهمة والـ security patches من غير ما حاجة تبوظ، ويضمن إن الـ workflow هيفضل شغال.\u2069\n- \u2067إنك تستخدم الـ master branch بتاع الـ action ممكن يبقى أسهل، بس لو حد نزّل major version جديد فيه تغيير بيكسر حاجة، الـ workflow بتاعك ممكن يبوظ.\u2069\n\u2067فيه actions محتاجة inputs لازم تحطها بـ with. بص على ملف README بتاع الـ action عشان تعرف هو محتاج إيه.\u2069\n\u2067الـ actions يا إما ملفات JavaScript يا إما Docker containers. لو الـ action اللي بتستخدمه Docker container، لازم الـ job يشتغل على Linux. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/virtual-environments-for-github-actions.\u2069",
+          "type": "string"
+        },
+        "run": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsrun",
+          "description": "\u2067بيشغّل أوامر terminal باستخدام الـ shell بتاع نظام التشغيل. لو ماكتبتش اسم للـ step، اسمه هيبقى نفس الأمر اللي في run.\u2069\n\u2067الأوامر بتشتغل افتراضيًا في shell مش login. تقدر تختار shell تاني وتظبطه زي ما تحب. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell.\u2069\n\u2067كل run بيفتح process و shell جداد. ولو كتبت أوامر في كذا سطر، كلهم بيشتغلوا في نفس الـ shell.\u2069",
+          "type": "string"
+        },
+        "working-directory": {
+          "$ref": "#/definitions/working-directory"
+        },
+        "shell": {
+          "$ref": "#/definitions/shell"
+        },
+        "with": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswith",
+          "$ref": "#/definitions/env",
+          "description": "\u2067الـ inputs اللي الـ action محتاجها، كل واحد فيهم key وقيمته. الـ inputs دي بتتحول لمتغيرات بيئة، اسمها بيبدأ بـ INPUT_ وبيتكتب بحروف كابيتال.\u2069",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/env"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs",
+                  "type": "string"
+                },
+                "entrypoint": {
+                  "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint",
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "env": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsenv",
+          "$ref": "#/definitions/env",
+          "description": "\u2067متغيرات بيئة للـ steps تستخدمها. وتقدر كمان تحط متغيرات بيئة للـ workflow كله أو لـ job.\u2069"
+        },
+        "continue-on-error": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error",
+          "description": "\u2067بيمنع الـ job إنه يفشل لما الـ step ده يفشل. حطه true لو عاوز الـ job يكمّل وينجح حتى لو الـ step ده فشل.\u2069",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": false
+        },
+        "timeout-minutes": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes",
+          "description": "\u2067أقصى عدد دقايق الـ step يفضل شغال فيه قبل ما يتقفل غصب عنه.\u2069",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "background": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsbackground",
+          "description": "\u2067بيشغّل الـ step في الخلفية، والـ job بيكمّل على الـ step اللي بعده من غير ما يستناه. ينفع تستخدم background مع steps فيها run أو uses. ولو عاوز تشاور على step شغال في الخلفية من wait أو cancel، اديله id. وأقصى عدد steps شغالة في الخلفية في نفس الوقت في الـ job الواحد هو 10.\u2069",
+          "type": "boolean"
+        },
+        "wait": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepswait",
+          "description": "\u2067بيوقّف الـ job لحد ما step أو أكتر من اللي شغالين في الخلفية يخلصوا. اكتب id واحد كنص، أو كذا id في array. وبعد ما الـ wait يخلص، الـ outputs بتاعة الـ steps دي بتبقى متاحة للـ steps اللي بعدها.\u2069",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "wait-all": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepswait-all",
+          "description": "\u2067بيوقّف الـ job لحد ما كل الـ steps اللي شغالة في الخلفية تخلص. wait-all مش بياخد أي قيم.\u2069",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cancel": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscancel",
+          "description": "\u2067بيقفل step شغال في الخلفية بهدوء. الـ runner بيبعت للـ process إشارة إنهاء (SIGTERM) عشان يلحق ينضّف وراه. و cancel بيقفل step واحد بس بالـ id بتاعه.\u2069",
+          "type": "string"
+        },
+        "parallel": {
+          "$comment": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsparallel",
+          "description": "\u2067بيشغّل مجموعة steps مع بعض في نفس الوقت، ويستنى لحد ما كلهم يخلصوا قبل ما يكمّل. كل step في المجموعة بيشتغل في الخلفية، وفيه wait تلقائي في آخر المجموعة.\u2069",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "types": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#onevent_nametypes",
+      "description": "\u2067بتختار أنواع الأحداث اللي تشغّل الـ workflow. أغلب الـ events في GitHub ليها أكتر من نوع. مثلًا event الـ release بيحصل لما release يتنشر، أو يتلغى نشره، أو يتعمل، أو يتعدّل، أو يتمسح، أو يتعلّم إنه prerelease. الكلمة types بتخليك تحدد بالظبط أنهي نوع يشغّل الـ workflow. ولو الـ webhook event ليه نوع واحد بس، مش محتاج types أصلًا.\u2069\n\u2067تقدر تكتب array من أنواع الأحداث. لو عاوز تعرف كل event وأنواعه شوف https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events.\u2069",
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "working-directory": {
+      "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsrun",
+      "description": "\u2067بالكلمة working-directory تقدر تحدد الفولدر اللي الأمر هيشتغل فيه.\u2069",
+      "type": "string"
+    },
+    "jobNeeds": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idneeds",
+      "description": "\u2067بيحدد الـ jobs اللي لازم تخلص بنجاح الأول قبل ما الـ job ده يبدأ. ممكن تكون نص أو array من النصوص. ولو job فشل، كل الـ jobs اللي معتمدة عليه هتتخطّى، إلا لو فيها شرط بيخليها تكمّل.\u2069",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/name"
+          },
+          "minItems": 1
+        },
+        {
+          "$ref": "#/definitions/name"
+        }
+      ]
+    },
+    "matrix": {
+      "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix",
+      "description": "\u2067الـ build matrix هي مجموعة إعدادات مختلفة للبيئة اللي هيشتغل عليها الـ job. مثلًا ممكن تشغّل الـ job على أكتر من version للغة أو نظام تشغيل أو أداة. كل إعداد بيبقى نسخة من الـ job بتشتغل لوحدها وتطلّع نتيجتها.\u2069\n\u2067بتحدد الـ matrix بإنك تكتب array فيها الاختيارات. مثلًا لو بيئة GitHub بتدعم Node.js ‏6 و 8 و 10، تقدر تحط الـ versions دي في array جوه الـ matrix.\u2069\n\u2067لو عامل matrix لأنظمة تشغيل، لازم runs-on ياخد نظام التشغيل بتاع الـ job الحالي بدل ما تكتب اسمه ثابت. وتقدر توصله بـ matrix.os وتحطه في runs-on. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.\u2069",
+      "oneOf": [
+        {
+          "type": "object",
+          "patternProperties": {
+            "^(in|ex)clude$": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#example-including-configurations-in-a-matrix-build",
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/expressionSyntax"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/configuration"
+                    }
+                  },
+                  "minItems": 1
+                }
+              ]
+            }
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/configuration"
+                },
+                "minItems": 1
+              },
+              {
+                "$ref": "#/definitions/expressionSyntax"
+              }
+            ]
+          },
+          "minProperties": 1
+        },
+        {
+          "$ref": "#/definitions/expressionSyntax"
+        }
+      ]
+    },
+    "reusableWorkflowCallJob": {
+      "$comment": "https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow",
+      "description": "\u2067كل job لازم يبقى ليه id. الـ job_id ده نص، وقيمته فيها إعدادات الـ job. لازم تبدّل <job_id> بنص مايتكررش جوه jobs. ولازم <job_id> يبدأ بحرف أو _ ومايبقاش فيه غير حروف وأرقام و - و _.\u2069",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idname",
+          "description": "\u2067اسم الـ job اللي هيظهر على GitHub.\u2069",
+          "type": "string"
+        },
+        "needs": {
+          "$ref": "#/definitions/jobNeeds"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissions"
+        },
+        "cache-mode": {
+          "$ref": "#/definitions/cacheMode"
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idif",
+          "description": "\u2067تقدر تستخدم if عشان الـ job مايشتغلش غير لما شرط معيّن يتحقق. وتقدر تستخدم أي context أو expression مدعوم في الشرط.\u2069\n\u2067الـ expressions جوه if مش محتاجة ${{ }}. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.\u2069",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "uses": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_iduses",
+          "description": "\u2067مكان و version ملف workflow قابل لإعادة الاستخدام عشان يشتغل كـ job، بالشكل ده './{path/to}/{localfile}.yml' أو '{owner}/{repo}/{path}/{filename}@{ref}'. الـ {ref} ممكن يبقى SHA أو tag لـ release أو اسم branch. واستخدام الـ commit SHA هو الأأمن من ناحية الثبات والأمان.\u2069",
+          "type": "string",
+          "pattern": "^(.+\\/)+(.+)\\.(ya?ml)(@.+)?$"
+        },
+        "with": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idwith",
+          "$ref": "#/definitions/env",
+          "description": "\u2067الـ inputs اللي هتتبعت للـ workflow اللي بتستدعيه. لازم تبقى ماشية مع الـ inputs المتعرّفة في الـ workflow ده. وعلى عكس 'jobs.<job_id>.steps[*].with'، الـ inputs اللي بتبعتها بـ 'jobs.<job_id>.with' مش بتبقى متاحة كمتغيرات بيئة في الـ workflow المستدعى، لكن تقدر توصلها من خلال الـ inputs context.\u2069"
+        },
+        "secrets": {
+          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsecrets",
+          "description": "\u2067لما تستخدم job عشان تستدعي workflow قابل لإعادة الاستخدام، تقدر تستخدم 'secrets' عشان تبعتله الـ secrets. ولازم أسماءها تبقى نفس الأسماء المتعرّفة في الـ workflow المستدعى.\u2069",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/env"
+            },
+            {
+              "type": "string",
+              "enum": ["inherit"]
+            }
+          ]
+        },
+        "strategy": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy",
+          "description": "\u2067الـ strategy بتعمل build matrix للـ jobs بتاعتك. تقدر تحدد أشكال مختلفة للبيئة وكل job يشتغل على واحدة منهم.\u2069",
+          "type": "object",
+          "properties": {
+            "matrix": {
+              "$ref": "#/definitions/matrix"
+            },
+            "fail-fast": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast",
+              "description": "\u2067لو true، GitHub هيلغي كل الـ jobs الشغالة لو أي job في الـ matrix فشل. القيمة الافتراضية: true\u2069",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": true
+            },
+            "max-parallel": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel",
+              "description": "\u2067أقصى عدد jobs ممكن يشتغلوا في نفس الوقت لما تستخدم matrix. بشكل افتراضي GitHub بيشغّل أكبر عدد ممكن مع بعض على حسب الـ runners المتاحة على أجهزته.\u2069",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["matrix"],
+          "additionalProperties": false
+        },
+        "concurrency": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idconcurrency",
+          "description": "\u2067الـ concurrency بتضمن إن مايشتغلش غير job أو workflow واحد بس في المرة بنفس الـ concurrency group. الـ group ده ممكن يبقى أي نص أو expression، والـ expression ده ينفع يستخدم أي context ماعدا secrets. \u2069\n\u2067وتقدر تحط concurrency على مستوى الـ workflow كله كمان. \u2069\n\u2067لو job أو workflow دخل الطابور وفيه واحد تاني شغال دلوقتي بنفس الـ concurrency group في نفس الـ repo، الجديد هيستنى (pending). وبشكل افتراضي أي واحد كان مستني قبله في نفس الـ group بيتلغي، وتقدر تغيّر ده بـ `queue`. ولو عاوز تلغي كمان اللي شغال دلوقتي في نفس الـ group، حط cancel-in-progress: true.\u2069",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/concurrency"
+            }
+          ]
+        }
+      },
+      "required": ["uses"],
+      "additionalProperties": false
+    },
+    "normalJob": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_id",
+      "description": "\u2067كل job لازم يبقى ليه id. الـ job_id ده نص، وقيمته فيها إعدادات الـ job. لازم تبدّل <job_id> بنص مايتكررش جوه jobs. ولازم <job_id> يبدأ بحرف أو _ ومايبقاش فيه غير حروف وأرقام و - و _.\u2069",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idname",
+          "description": "\u2067اسم الـ job اللي هيظهر على GitHub.\u2069",
+          "type": "string"
+        },
+        "needs": {
+          "$ref": "#/definitions/jobNeeds"
+        },
+        "snapshot": {
+          "$ref": "#/definitions/snapshot"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissions"
+        },
+        "cache-mode": {
+          "$ref": "#/definitions/cacheMode"
+        },
+        "runs-on": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idruns-on",
+          "description": "\u2067نوع الجهاز اللي الـ job هيشتغل عليه. ممكن يبقى runner من GitHub، أو runner انت مشغّله بنفسك (self-hosted).\u2069",
+          "anyOf": [
+            {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#github-hosted-runners",
+              "type": "string"
+            },
+            {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#self-hosted-runners",
+              "type": "array",
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1
+                }
+              ]
+            },
+            {
+              "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#choosing-runners-in-a-group",
+              "type": "object",
+              "properties": {
+                "group": {
+                  "type": "string"
+                },
+                "labels": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "$ref": "#/definitions/stringContainingExpressionSyntax"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "environment": {
+          "$comment": "https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idenvironment",
+          "description": "\u2067الـ environment اللي الـ job بيشاور عليها.\u2069",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/environment"
+            }
+          ]
+        },
+        "outputs": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idoutputs",
+          "description": "\u2067الـ outputs بتاعة الـ job. بتبقى متاحة لكل الـ jobs اللي بعده واللي معتمدة عليه.\u2069",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "minProperties": 1
+        },
+        "env": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idenv",
+          "$ref": "#/definitions/env",
+          "description": "\u2067متغيرات بيئة متاحة لكل الـ steps في الـ job.\u2069"
+        },
+        "defaults": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_iddefaults",
+          "$ref": "#/definitions/defaults",
+          "description": "\u2067إعدادات افتراضية هتتطبق على كل الـ steps في الـ job.\u2069"
+        },
+        "if": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idif",
+          "description": "\u2067تقدر تستخدم if عشان الـ job مايشتغلش غير لما شرط معيّن يتحقق. وتقدر تستخدم أي context أو expression مدعوم في الشرط.\u2069\n\u2067الـ expressions جوه if مش محتاجة ${{ }}. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions.\u2069",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "steps": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps",
+          "description": "\u2067الـ job فيه سلسلة خطوات اسمها steps. الـ steps ممكن تشغّل أوامر، أو تعمل تجهيزات، أو تشغّل action من الـ repo بتاعك أو من repo عام أو من Docker registry. مش كل الـ steps بتشغّل actions، بس كل action بيشتغل كـ step. كل step بيشتغل في process لوحده، وليه وصول لمساحة الشغل والملفات. وعشان كل step في process لوحده، أي تغيير في متغيرات البيئة مابيتنقلش للـ step اللي بعده. و GitHub بيضيف steps جاهزة لتجهيز الـ job وإنهائه.\u2069\n\u2067لازم يبقى فيه يا `uses` يا `run`\u2069\n",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          },
+          "minItems": 1
+        },
+        "timeout-minutes": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes",
+          "description": "\u2067أقصى عدد دقايق الـ job يفضل شغال فيه قبل ما GitHub يلغيه لوحده. القيمة الافتراضية: 360\u2069",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ],
+          "default": 360
+        },
+        "strategy": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy",
+          "description": "\u2067الـ strategy بتعمل build matrix للـ jobs بتاعتك. تقدر تحدد أشكال مختلفة للبيئة وكل job يشتغل على واحدة منهم.\u2069",
+          "type": "object",
+          "properties": {
+            "matrix": {
+              "$ref": "#/definitions/matrix"
+            },
+            "fail-fast": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast",
+              "description": "\u2067لو true، GitHub هيلغي كل الـ jobs الشغالة لو أي job في الـ matrix فشل. القيمة الافتراضية: true\u2069",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": true
+            },
+            "max-parallel": {
+              "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel",
+              "description": "\u2067أقصى عدد jobs ممكن يشتغلوا في نفس الوقت لما تستخدم matrix. بشكل افتراضي GitHub بيشغّل أكبر عدد ممكن مع بعض على حسب الـ runners المتاحة على أجهزته.\u2069",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["matrix"],
+          "additionalProperties": false
+        },
+        "continue-on-error": {
+          "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error",
+          "description": "\u2067بيمنع الـ workflow إنه يفشل لما الـ job ده يفشل. حطه true لو عاوز الـ workflow ينجح حتى لو الـ job ده فشل.\u2069",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/expressionSyntax"
+            }
+          ]
+        },
+        "container": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainer",
+          "description": "\u2067container هتشتغل فيه كل الـ steps اللي مش محدد ليها container. لو عندك steps بتستخدم scripts وsteps بتستخدم container actions، الـ container actions هتشتغل كـ containers جنب بعض على نفس الـ network وبنفس الـ volumes.\u2069\n\u2067لو ماحددتش container، كل الـ steps هتشتغل على الجهاز اللي في runs-on على طول، إلا لو step بيستخدم action متظبط إنه يشتغل في container.\u2069",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/jobContainer"
+            }
+          ]
+        },
+        "services": {
+          "$comment": "https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idservices",
+          "description": "\u2067containers إضافية بتشغّل services للـ job. مفيدة لو عاوز database أو cache زي redis. الـ runner بيعمل network لوحده وبيدير الـ service containers من أول ما تشتغل لحد ما تقفل.\u2069\n\u2067لو بتستخدم service container أو الـ step بيستخدم container actions، مش محتاج تظبط ports عشان توصل للـ service، لأن Docker بيفتح كل الـ ports بين الـ containers اللي على نفس الـ network لوحده.\u2069\n\u2067لو الـ job والـ action الاتنين شغالين في containers، تقدر توصل للـ container باسمه على طول، لأن اسم الـ host بيبقى هو نفسه اسم الـ service.\u2069\n\u2067لو الـ step مش بيستخدم container action، لازم توصل للـ service على localhost وتربط الـ ports.\u2069",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/serviceContainer"
+          }
+        },
+        "concurrency": {
+          "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idconcurrency",
+          "description": "\u2067الـ concurrency بتضمن إن مايشتغلش غير job أو workflow واحد بس في المرة بنفس الـ concurrency group. الـ group ده ممكن يبقى أي نص أو expression، والـ expression ده ينفع يستخدم أي context ماعدا secrets. \u2069\n\u2067وتقدر تحط concurrency على مستوى الـ workflow كله كمان. \u2069\n\u2067لو job أو workflow دخل الطابور وفيه واحد تاني شغال دلوقتي بنفس الـ concurrency group في نفس الـ repo، الجديد هيستنى (pending). وبشكل افتراضي أي واحد كان مستني قبله في نفس الـ group بيتلغي، وتقدر تغيّر ده بـ `queue`. ولو عاوز تلغي كمان اللي شغال دلوقتي في نفس الـ group، حط cancel-in-progress: true.\u2069",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/concurrency"
+            }
+          ]
+        }
+      },
+      "required": ["runs-on"],
+      "additionalProperties": false
+    },
+    "workflowDispatchInput": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_id",
+      "description": "\u2067اسم الـ input. قيمة <input_id> فيها بيانات الـ input. لازم <input_id> مايتكررش جوه inputs، ولازم يبدأ بحرف أو _ ومايبقاش فيه غير حروف وأرقام و - و _.\u2069",
+      "type": "object",
+      "properties": {
+        "description": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddescription",
+          "description": "\u2067وصف الـ input.\u2069",
+          "type": "string"
+        },
+        "deprecationMessage": {
+          "description": "\u2067رسالة بتظهر للي بيستخدم input خلاص اتلغى (deprecated).\u2069",
+          "type": "string"
+        },
+        "required": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_idrequired",
+          "description": "\u2067true أو false: هل الـ action محتاج الـ input ده ولا لأ. حطه true لو هو مطلوب.\u2069",
+          "type": "boolean"
+        },
+        "default": {
+          "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddefault",
+          "description": "\u2067القيمة الافتراضية للـ input، وبتتاخد لو ماتحطش في ملف الـ workflow.\u2069"
+        },
+        "type": {
+          "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputsinput_idtype",
+          "description": "\u2067نوع الـ input.\u2069",
+          "type": "string",
+          "enum": ["string", "choice", "boolean", "number", "environment"]
+        },
+        "options": {
+          "$comment": "https://github.blog/changelog/2021-11-10-github-actions-input-types-for-manual-workflows",
+          "description": "\u2067الاختيارات اللي هتظهر في القايمة، لو النوع choice.\u2069",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "string"
+            },
+            "default": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "boolean"
+            },
+            "default": {
+              "type": "boolean"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "default": {
+              "type": "number"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "environment"
+            },
+            "default": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "choice"
+            },
+            "options": {
+              "$ref": "#/definitions/workflowDispatchInput/properties/options"
+            }
+          },
+          "required": ["type", "options"]
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#name",
+      "description": "\u2067اسم الـ workflow. GitHub بيعرض الأسماء دي في صفحة Actions بتاعة الـ repo. لو ماكتبتوش، GitHub هيحط اسم ملف الـ workflow مكانه.\u2069",
+      "type": "string"
+    },
+    "on": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#on",
+      "description": "\u2067الـ event من GitHub اللي يشغّل الـ workflow. ممكن تكتب event واحد كنص، أو array من الـ events، أو array من أنواع الـ events، أو map فيها إعدادات بتجدول الـ workflow أو بتخليه مايشتغلش غير مع تغييرات في ملفات أو tags أو branches معيّنة. لو عاوز تشوف كل الـ events المتاحة شوف https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows.\u2069",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/event"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/event"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "branch_protection_rule": {
+              "$comment": "https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#branch_protection_rule",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ branch_protection_rule. الـ event ده ليه أكتر من نوع.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "check_run": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#check-run-event-check_run",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ check_run. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/checks/runs.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "rerequested",
+                          "completed",
+                          "requested_action"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "rerequested",
+                        "completed",
+                        "requested_action"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "check_suite": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#check-suite-event-check_suite",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ check_suite. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/checks/suites/.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["completed", "requested", "rerequested"]
+                      },
+                      "default": ["completed", "requested", "rerequested"]
+                    }
+                  }
+                }
+              ]
+            },
+            "create": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#create-event-create",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يعمل branch أو tag جديد، وده بيطلّع event الـ create. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/git/refs/#create-a-reference.\u2069"
+            },
+            "delete": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#delete-event-delete",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يمسح branch أو tag، وده بيطلّع event الـ delete. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/git/refs/#delete-a-reference.\u2069"
+            },
+            "deployment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#deployment-event-deployment",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يعمل deployment، وده بيطلّع event الـ deployment. الـ deployments اللي معمولة بـ commit SHA ممكن مايبقاش ليها Git ref. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/deployments/.\u2069"
+            },
+            "deployment_status": {
+              "$comment": "https://docs.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما طرف خارجي يبعت حالة deployment، وده بيطلّع event الـ deployment_status. الـ deployments اللي معمولة بـ commit SHA ممكن مايبقاش ليها Git ref. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/deployments/#create-a-deployment-status.\u2069"
+            },
+            "discussion": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ discussion. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ GraphQL API شوف https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "edited",
+                          "deleted",
+                          "transferred",
+                          "pinned",
+                          "unpinned",
+                          "labeled",
+                          "unlabeled",
+                          "locked",
+                          "unlocked",
+                          "category_changed",
+                          "answered",
+                          "unanswered"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "edited",
+                        "deleted",
+                        "transferred",
+                        "pinned",
+                        "unpinned",
+                        "labeled",
+                        "unlabeled",
+                        "locked",
+                        "unlocked",
+                        "category_changed",
+                        "answered",
+                        "unanswered"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "discussion_comment": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ discussion_comment. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ GraphQL API شوف https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "fork": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#fork-event-fork",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يعمل fork للـ repo، وده بيطلّع event الـ fork. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/forks/#create-a-fork.\u2069"
+            },
+            "gollum": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#gollum-event-gollum",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow لما حد يعمل صفحة Wiki أو يعدّلها، وده بيطلّع event الـ gollum.\u2069"
+            },
+            "issue_comment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#issue-comment-event-issue_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ issue_comment. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/issues/comments/.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "issues": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#issues-event-issues",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ issues. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/issues.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "opened",
+                          "edited",
+                          "deleted",
+                          "transferred",
+                          "pinned",
+                          "unpinned",
+                          "closed",
+                          "reopened",
+                          "assigned",
+                          "unassigned",
+                          "labeled",
+                          "unlabeled",
+                          "locked",
+                          "unlocked",
+                          "milestoned",
+                          "demilestoned",
+                          "typed",
+                          "untyped",
+                          "field_added",
+                          "field_removed"
+                        ]
+                      },
+                      "default": [
+                        "opened",
+                        "edited",
+                        "deleted",
+                        "transferred",
+                        "pinned",
+                        "unpinned",
+                        "closed",
+                        "reopened",
+                        "assigned",
+                        "unassigned",
+                        "labeled",
+                        "unlabeled",
+                        "locked",
+                        "unlocked",
+                        "milestoned",
+                        "demilestoned",
+                        "typed",
+                        "untyped",
+                        "field_added",
+                        "field_removed"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "label": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#label-event-label",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ label. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/issues/labels/.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "merge_group": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#merge_group",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow لما pull request يدخل الـ merge queue، وده بيحطه في merge group. لو عاوز تعرف عن الـ merge queue شوف https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue .\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["checks_requested"]
+                      },
+                      "default": ["checks_requested"]
+                    }
+                  }
+                }
+              ]
+            },
+            "milestone": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#milestone-event-milestone",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ milestone. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/issues/milestones/.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "closed",
+                          "opened",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "closed",
+                        "opened",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "page_build": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#page-build-event-page_build",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يعمل push على branch مفعّل عليه GitHub Pages، وده بيطلّع event الـ page_build. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/pages/.\u2069"
+            },
+            "project": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-event-project",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ project. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/projects/.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "updated",
+                          "closed",
+                          "reopened",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "updated",
+                        "closed",
+                        "reopened",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "project_card": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-card-event-project_card",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ project_card. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/projects/cards.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "moved",
+                          "converted",
+                          "edited",
+                          "deleted"
+                        ]
+                      },
+                      "default": [
+                        "created",
+                        "moved",
+                        "converted",
+                        "edited",
+                        "deleted"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "project_column": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#project-column-event-project_column",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ project_column. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/projects/columns.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "updated", "moved", "deleted"]
+                      },
+                      "default": ["created", "updated", "moved", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "public": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#public-event-public",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حد يحوّل repo من private لـ public، وده بيطلّع event الـ public. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/#edit.\u2069"
+            },
+            "pull_request": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-event-pull_request",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ pull_request. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/pulls.\u2069\n\u2067خلي بالك: الـ workflows مابتشتغلش على الـ repo الأساسي لو كان private والـ pull request جاي من fork.\u2069\n\u2067لما تعمل pull request من fork للـ repo الأساسي، GitHub بيبعت event الـ pull_request للـ repo الأساسي بس، ومفيش أي events بتحصل على الـ fork.\u2069\n\u2067الـ workflows مابتشتغلش على الـ forks بشكل افتراضي، لازم تفعّل GitHub Actions من تاب Actions في الـ fork.\u2069\n\u2067الـ GITHUB_TOKEN في الـ forks صلاحياته قراية بس. لو عاوز تعرف أكتر عن الـ GITHUB_TOKEN شوف https://help.github.com/en/articles/virtual-environments-for-github-actions.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "types": {
+                          "$ref": "#/definitions/types",
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "unassigned",
+                              "labeled",
+                              "unlabeled",
+                              "opened",
+                              "edited",
+                              "closed",
+                              "reopened",
+                              "synchronize",
+                              "converted_to_draft",
+                              "ready_for_review",
+                              "locked",
+                              "unlocked",
+                              "milestoned",
+                              "demilestoned",
+                              "review_requested",
+                              "review_request_removed",
+                              "auto_merge_enabled",
+                              "auto_merge_disabled",
+                              "enqueued",
+                              "dequeued"
+                            ]
+                          },
+                          "default": ["opened", "synchronize", "reopened"]
+                        },
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "pull_request_review": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-review-event-pull_request_review",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ pull_request_review. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/pulls/reviews.\u2069\n\u2067خلي بالك: الـ workflows مابتشتغلش على الـ repo الأساسي لو كان private والـ pull request جاي من fork.\u2069\n\u2067لما تعمل pull request من fork للـ repo الأساسي، GitHub بيبعت event الـ pull_request للـ repo الأساسي بس، ومفيش أي events بتحصل على الـ fork.\u2069\n\u2067الـ workflows مابتشتغلش على الـ forks بشكل افتراضي، لازم تفعّل GitHub Actions من تاب Actions في الـ fork.\u2069\n\u2067الـ GITHUB_TOKEN في الـ forks صلاحياته قراية بس. لو عاوز تعرف أكتر عن الـ GITHUB_TOKEN شوف https://help.github.com/en/articles/virtual-environments-for-github-actions.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["submitted", "edited", "dismissed"]
+                      },
+                      "default": ["submitted", "edited", "dismissed"]
+                    }
+                  }
+                }
+              ]
+            },
+            "pull_request_review_comment": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#pull-request-review-comment-event-pull_request_review_comment",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما كومنت على الـ diff بتاع pull request يتعدّل، وده بيطلّع event الـ pull_request_review_comment. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/pulls/comments.\u2069\n\u2067خلي بالك: الـ workflows مابتشتغلش على الـ repo الأساسي لو كان private والـ pull request جاي من fork.\u2069\n\u2067لما تعمل pull request من fork للـ repo الأساسي، GitHub بيبعت event الـ pull_request للـ repo الأساسي بس، ومفيش أي events بتحصل على الـ fork.\u2069\n\u2067الـ workflows مابتشتغلش على الـ forks بشكل افتراضي، لازم تفعّل GitHub Actions من تاب Actions في الـ fork.\u2069\n\u2067الـ GITHUB_TOKEN في الـ forks صلاحياته قراية بس. لو عاوز تعرف أكتر عن الـ GITHUB_TOKEN شوف https://help.github.com/en/articles/virtual-environments-for-github-actions.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["created", "edited", "deleted"]
+                      },
+                      "default": ["created", "edited", "deleted"]
+                    }
+                  }
+                }
+              ]
+            },
+            "pull_request_target": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#pull_request_target",
+              "description": "\u2067الـ event ده شبه pull_request، بس بيشتغل في سياق الـ repo الأساسي بتاع الـ pull request مش في الـ merge commit. يعني تقدر تدي الـ secrets بتاعتك للـ workflows اللي الـ pull request بيشغّلها بأمان أكتر، لأن اللي بيشتغل بس هو الـ workflows اللي في الـ commit بتاع الـ repo الأساسي. مثلًا الـ event ده بيخليك تعمل workflows تحط labels وكومنتات على الـ pull requests على حسب البيانات اللي جاية مع الـ event.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "types": {
+                          "$ref": "#/definitions/types",
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "unassigned",
+                              "labeled",
+                              "unlabeled",
+                              "opened",
+                              "edited",
+                              "closed",
+                              "reopened",
+                              "synchronize",
+                              "converted_to_draft",
+                              "ready_for_review",
+                              "locked",
+                              "unlocked",
+                              "review_requested",
+                              "review_request_removed",
+                              "auto_merge_enabled",
+                              "auto_merge_disabled"
+                            ]
+                          },
+                          "default": ["opened", "synchronize", "reopened"]
+                        },
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "push": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#push-event-push",
+              "description": "\u2067بيشغّل الـ workflow لما حد يعمل push على branch في الـ repo، وده بيطلّع event الـ push.\u2069\n\u2067خلي بالك: البيانات اللي بتوصل لـ GitHub Actions من الـ webhook مافيهاش added و removed و modified جوه الـ commit. لو محتاج الـ commit كامل هاته من الـ REST API. لو عاوز تفاصيل أكتر شوف https://developer.github.com/v3/repos/commits/#get-a-single-commit.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "branches": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "branches-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "tags-ignore": {
+                          "$ref": "#/definitions/branch"
+                        },
+                        "paths": {
+                          "$ref": "#/definitions/path"
+                        },
+                        "paths-ignore": {
+                          "$ref": "#/definitions/path"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["branches", "branches-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["tags", "tags-ignore"]
+                      }
+                    },
+                    {
+                      "not": {
+                        "type": "object",
+                        "required": ["paths", "paths-ignore"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "registry_package": {
+              "$comment": "https://help.github.com/en/actions/reference/events-that-trigger-workflows#registry-package-event-registry_package",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما package تتنشر أو تتحدّث. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/github/managing-packages-with-github-packages.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["published", "updated"]
+                      },
+                      "default": ["published", "updated"]
+                    }
+                  }
+                }
+              ]
+            },
+            "release": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#release-event-release",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ release. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/releases/ في توثيق GitHub للمطورين.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "published",
+                          "unpublished",
+                          "created",
+                          "edited",
+                          "deleted",
+                          "prereleased",
+                          "released"
+                        ]
+                      },
+                      "default": [
+                        "published",
+                        "unpublished",
+                        "created",
+                        "edited",
+                        "deleted",
+                        "prereleased",
+                        "released"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "status": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#status-event-status",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما حالة commit في Git تتغير، وده بيطلّع event الـ status. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/repos/statuses/.\u2069"
+            },
+            "watch": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#watch-event-watch",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067بيشغّل الـ workflow كل ما يحصل event الـ watch. الـ event ده ليه أكتر من نوع. لو عاوز تعرف عن الـ REST API شوف https://developer.github.com/v3/activity/starring/.\u2069"
+            },
+            "workflow_call": {
+              "$comment": "https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_call",
+              "description": "\u2067بيخلّي workflows تانية تقدر تستدعي الـ workflow ده وتستخدمه.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "inputs": {
+                      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onworkflow_callinputs",
+                      "description": "\u2067لما تستخدم workflow_call، تقدر (لو حابب) تحدد inputs بتتبعت من الـ workflow اللي بيستدعي للـ workflow المستدعى.\u2069",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputsinput_id",
+                          "description": "\u2067اسم الـ input. قيمة <input_id> فيها بيانات الـ input. لازم <input_id> مايتكررش جوه inputs، ولازم يبدأ بحرف أو _ ومايبقاش فيه غير حروف وأرقام و - و _.\u2069",
+                          "type": "object",
+                          "properties": {
+                            "description": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddescription",
+                              "description": "\u2067وصف الـ input.\u2069",
+                              "type": "string"
+                            },
+                            "required": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_idrequired",
+                              "description": "\u2067true أو false: هل الـ action محتاج الـ input ده ولا لأ. حطه true لو هو مطلوب.\u2069",
+                              "type": "boolean"
+                            },
+                            "type": {
+                              "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callinput_idtype",
+                              "description": "\u2067مطلوب لو معرّف input في on.workflow_call. القيمة نص بيحدد نوع الـ input، ولازم تبقى واحدة من دول: boolean أو number أو string.\u2069",
+                              "type": "string",
+                              "enum": ["boolean", "number", "string"]
+                            },
+                            "default": {
+                              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputsinput_iddefault",
+                              "description": "\u2067القيمة الافتراضية اللي بتتاخد لو الـ input ماتحطش في ملف الـ workflow.\u2069",
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["type"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "outputs": {
+                      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onworkflow_calloutputs",
+                      "description": "\u2067لما تستخدم workflow_call، تقدر (لو حابب) تحدد inputs بتتبعت من الـ workflow اللي بيستدعي للـ workflow المستدعى.\u2069",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_id",
+                          "description": "\u2067اسم الـ output. قيمة <output_id> فيها بيانات الـ output. لازم <output_id> مايتكررش جوه outputs، ولازم يبدأ بحرف أو _ ومايبقاش فيه غير حروف وأرقام و - و _.\u2069",
+                          "type": "object",
+                          "properties": {
+                            "description": {
+                              "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_iddescription",
+                              "description": "\u2067وصف الـ output.\u2069",
+                              "type": "string"
+                            },
+                            "value": {
+                              "$comment": "https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#outputsoutput_idvalue",
+                              "description": "\u2067القيمة اللي الـ output هياخدها. ممكن تبقى نص أو expression فيه context. مثلًا تقدر تستخدم الـ steps context عشان تخلي قيمة الـ output هي نفس output بتاع step معيّن.\u2069",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["value"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "secrets": {
+                      "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecrets",
+                      "type": "object",
+                      "description": "\u2067الـ secrets اللي ينفع تستخدمها في الـ workflow المستدعى. وجوه الـ workflow ده تقدر توصل لأي secret من خلال الـ secrets context.\u2069",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecretssecret_id",
+                          "type": "object",
+                          "description": "\u2067اسم الـ secret.\u2069",
+                          "properties": {
+                            "description": {
+                              "description": "\u2067وصف الـ secret.\u2069",
+                              "type": "string"
+                            },
+                            "required": {
+                              "$comment": "https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callsecretssecret_idrequired",
+                              "description": "\u2067true أو false: هل لازم الـ secret ده يتبعت ولا لأ.\u2069",
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              ]
+            },
+            "workflow_dispatch": {
+              "$comment": "https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067دلوقتي تقدر تعمل workflows بتشغّلها بإيدك من خلال event الـ workflow_dispatch. هيظهرلك زرار 'Run workflow' في تاب Actions تشغّل منه الـ workflow بسهولة.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "inputs": {
+                      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/metadata-syntax-for-github-actions#inputs",
+                      "description": "\u2067الـ inputs بتخليك تحدد البيانات اللي الـ action مستنيها وهو شغال. GitHub بيحفظها كمتغيرات بيئة. وأي input اسمه فيه حروف كابيتال بيتحول لـ small وهو شغال، عشان كده بننصحك تكتب الأسماء small من الأول.\u2069",
+                      "type": "object",
+                      "patternProperties": {
+                        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                          "$ref": "#/definitions/workflowDispatchInput"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "workflow_run": {
+              "$comment": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_run",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067الـ event ده بيحصل لما workflow يتطلب تشغيله أو يخلص، وبيخليك تشغّل workflow على حسب نتيجة workflow تاني. مثلًا لو الـ workflow بتاع pull_request بيطلّع build artifacts، تقدر تعمل workflow جديد بـ workflow_run يحلل النتايج ويكتب كومنت على الـ pull request الأصلي.\u2069",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/definitions/types",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["requested", "completed", "in_progress"]
+                      },
+                      "default": ["requested", "completed"]
+                    },
+                    "workflows": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "patternProperties": {
+                    "^branches(-ignore)?$": {}
+                  }
+                }
+              ]
+            },
+            "repository_dispatch": {
+              "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/events-that-trigger-workflows#external-events-repository_dispatch",
+              "$ref": "#/definitions/eventObject",
+              "description": "\u2067تقدر تستخدم GitHub API عشان تطلّع webhook event اسمه repository_dispatch لما تكون عاوز تشغّل workflow بسبب حاجة حصلت برا GitHub. لو عاوز تفاصيل أكتر شوف https://developer.github.com/v3/repos/#create-a-repository-dispatch-event.\u2069\n\u2067عشان تطلّع الـ event ده لازم تبعت POST request لـ endpoint في GitHub API، وتبعت معاه event_type يوصف نوع الحاجة اللي حصلت. ولازم كمان تظبط الـ workflow بتاعك إنه يسمع لـ repository_dispatch عشان يشتغل.\u2069"
+            },
+            "schedule": {
+              "$comment": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule",
+              "description": "\u2067تقدر تجدول الـ workflow إنه يشتغل في أوقات معيّنة بتوقيت UTC باستخدام صيغة POSIX cron ‏(https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html#tag_20_25_07). ولو حابب تقدر تحدد timezone باسمها بصيغة IANA ‏(https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) عشان المواعيد تمشي على توقيتك. الـ workflows المجدولة بتشتغل على آخر commit في الـ branch الافتراضي أو الأساسي. وأقل مدة بين كل تشغيل والتاني 5 دقايق.\u2069\n\u2067خلي بالك: GitHub Actions مش بيدعم الصيغ دي: @yearly و @monthly و @weekly و @daily و @hourly و @reboot.\u2069\n\u2067تقدر تستخدم crontab guru ‏(https://crontab.guru/) عشان يساعدك تكتب الـ cron وتتأكد هيشتغل امتى. وفيه كمان أمثلة جاهزة على crontab guru تبدأ منها (https://crontab.guru/examples.html).\u2069",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cron": {
+                    "description": "\u2067تعبير cron بيحدد المواعيد. الـ workflow المجدول مش هيشتغل أكتر من مرة كل 5 دقايق.\u2069",
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "description": "\u2067الـ timezone اللي مواعيد الـ workflow هتمشي عليها، بصيغة IANA (زي 'America/New_York' أو 'Europe/London'). لو ماكتبتهاش، المواعيد هتمشي على توقيت UTC.\u2069",
+                    "type": "string"
+                  }
+                },
+                "required": ["cron"],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "env": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#env",
+      "$ref": "#/definitions/env",
+      "description": "\u2067متغيرات بيئة متاحة لكل الـ jobs والـ steps في الـ workflow.\u2069"
+    },
+    "defaults": {
+      "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#defaults",
+      "$ref": "#/definitions/defaults",
+      "description": "\u2067إعدادات افتراضية هتتطبق على كل الـ jobs في الـ workflow.\u2069"
+    },
+    "concurrency": {
+      "$comment": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency",
+      "description": "\u2067الـ concurrency بتضمن إن مايشتغلش غير job أو workflow واحد بس في المرة بنفس الـ concurrency group. الـ group ده ممكن يبقى أي نص أو expression، والـ expression ده ينفع يستخدم أي context ماعدا secrets. \u2069\n\u2067وتقدر تحط concurrency على مستوى الـ workflow كله كمان. \u2069\n\u2067لو job أو workflow دخل الطابور وفيه واحد تاني شغال دلوقتي بنفس الـ concurrency group في نفس الـ repo، الجديد هيستنى (pending). وبشكل افتراضي أي واحد كان مستني قبله في نفس الـ group بيتلغي، وتقدر تغيّر ده بـ `queue`. ولو عاوز تلغي كمان اللي شغال دلوقتي في نفس الـ group، حط cancel-in-progress: true.\u2069",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/concurrency"
+        }
+      ]
+    },
+    "cache-mode": {
+      "$ref": "#/definitions/cacheMode"
+    },
+    "jobs": {
+      "$comment": "https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobs",
+      "description": "\u2067تشغيل الـ workflow بيتكوّن من job واحد أو أكتر، والـ jobs بتشتغل مع بعض في نفس الوقت بشكل افتراضي. لو عاوزها تشتغل ورا بعض، حدد مين معتمد على مين بـ jobs.<job_id>.needs.\u2069\n\u2067كل job بيشتغل على نسخة جديدة نضيفة من البيئة اللي في runs-on.\u2069\n\u2067تقدر تشغّل عدد jobs مالوش حد طول ما انت جوه حدود الاستخدام. لو عاوز تفاصيل أكتر شوف https://help.github.com/en/github/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#usage-limits.\u2069",
+      "type": "object",
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/normalJob"
+            },
+            {
+              "$ref": "#/definitions/reusableWorkflowCallJob"
+            }
+          ]
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "run-name": {
+      "$comment": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#run-name",
+      "description": "\u2067الاسم اللي هيظهر لكل run للـ workflow. GitHub بيعرضه في قايمة الـ runs في تاب 'Actions' بتاع الـ repo.\u2069",
+      "type": "string"
+    },
+    "permissions": {
+      "$ref": "#/definitions/permissions"
+    }
+  },
+  "required": ["on", "jobs"],
+  "type": "object"
+}
